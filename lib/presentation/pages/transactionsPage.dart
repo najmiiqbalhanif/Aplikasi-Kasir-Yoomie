@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Untuk mendapatkan userId
-import '../../models/order_dto.dart'; // Import OrderDTO yang baru dibuat
-import '../../services/order_service.dart'; // Import OrderService yang baru dibuat
+import '../../models/transaction_dto.dart';
+import '../../services/transactionService.dart';
 
-class OrdersPage extends StatefulWidget {
-  const OrdersPage({super.key});
+class TransactionsPage extends StatefulWidget {
+  const TransactionsPage({super.key});
 
   @override
-  State<OrdersPage> createState() => _OrdersPageState();
+  State<TransactionsPage> createState() => _TransactionsPageState();
 }
 
-class _OrdersPageState extends State<OrdersPage> {
-  List<OrderDTO> orders = []; // Ganti dengan list OrderDTO
+class _TransactionsPageState extends State<TransactionsPage> {
+  List<TransactionDTO> transactions = [];
   bool isLoading = true;
   String? errorMessage;
-  final OrderService orderService = OrderService(baseUrl: 'http://10.0.2.2:8080'); // Inisialisasi service
+  final TransactionService transactionService = TransactionService(baseUrl: 'http://10.0.2.2:8080'); // Inisialisasi service
 
   final NumberFormat currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
 
   @override
   void initState() {
     super.initState();
-    _fetchOrders(); // Panggil saat initState
+    _fetchTransactions(); // Panggil saat initState
   }
 
-  Future<void> _fetchOrders() async {
+  Future<void> _fetchTransactions() async {
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -38,24 +38,23 @@ class _OrdersPageState extends State<OrdersPage> {
       if (userId == null) {
         setState(() {
           isLoading = false;
-          errorMessage = "User not logged in. Please log in to view your orders.";
+          errorMessage = "User not logged in. Please log in to view your transactions.";
         });
         return;
       }
 
-      // Ambil order berdasarkan userId (lebih relevan)
-      final fetchedOrders = await orderService.fetchOrdersByUserId(userId);
-      // Atau jika ingin semua order: final fetchedOrders = await orderService.fetchAllOrders();
+      // Ambil Transaction berdasarkan userId (lebih relevan)
+      final fetchedTransactions = await transactionService.fetchTransactionsByUserId(userId);
 
       setState(() {
-        orders = fetchedOrders;
+        transactions = fetchedTransactions;
         isLoading = false;
       });
     } catch (e) {
-      print('Error fetching orders: $e');
+      print('Error fetching transactions: $e');
       setState(() {
         isLoading = false;
-        errorMessage = 'Failed to load orders. Please try again later. ($e)';
+        errorMessage = 'Failed to load transactions. Please try again later. ($e)';
       });
     }
   }
@@ -67,7 +66,7 @@ class _OrdersPageState extends State<OrdersPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: const Text(
-          'Orders',
+          'Transactions',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -87,20 +86,20 @@ class _OrdersPageState extends State<OrdersPage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _fetchOrders,
+                onPressed: _fetchTransactions,
                 child: const Text("Retry"),
               ),
             ],
           ),
         ),
       )
-          : orders.isEmpty
-          ? const Center(child: Text("No orders found."))
+          : transactions.isEmpty
+          ? const Center(child: Text("No transactions found."))
           : ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: orders.length,
+        itemCount: transactions.length,
         itemBuilder: (context, index) {
-          final order = orders[index];
+          final transaction = transactions[index];
           return ExpansionTile(
             tilePadding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
             title: Row(
@@ -110,14 +109,14 @@ class _OrdersPageState extends State<OrdersPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Order ID: ${order.id}", // Menggunakan order.id
+                      "Transaction ID: ${transaction.id}",
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Text("Date: ${order.createdOn.split('T')[0]}") // Mengambil tanggal saja
+                    Text("Date: ${transaction.createdOn.split('T')[0]}") // Mengambil tanggal saja
                   ],
                 ),
                 Text(
-                  currencyFormat.format(order.totalAmount), // Menggunakan order.totalAmount
+                  currencyFormat.format(transaction.totalAmount),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -133,21 +132,17 @@ class _OrdersPageState extends State<OrdersPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Payment Method: ${order.paymentMethod}'),
-                    Text('Payment Status: ${order.paymentStatus}'),
-                    Text('Address: ${order.address}'),
+                    Text('Payment Method: ${transaction.paymentMethod}'),
+                    Text('Payment Status: ${transaction.paymentStatus}'),
+                    Text('Address: ${transaction.address}'),
                     const Divider(),
                     Text(
-                      'Items: ${order.cartSummary}', // Menampilkan ringkasan cart
+                      'Items: ${transaction.cartSummary}', // Menampilkan ringkasan cart
                       style: const TextStyle(fontStyle: FontStyle.italic),
                     ),
                   ],
                 ),
               ),
-              // Jika Anda ingin menampilkan setiap item secara detail, Anda perlu mengubah OrderDTO
-              // di backend untuk menyertakan daftar PaymentItemDTO di dalamnya.
-              // Saat ini OrderDTO di backend hanya memiliki `cartSummary` (String).
-              // Untuk sementara, kita akan tampilkan `cartSummary` sebagai ringkasan.
             ],
           );
         },

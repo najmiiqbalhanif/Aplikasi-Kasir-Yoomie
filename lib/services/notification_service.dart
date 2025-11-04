@@ -37,8 +37,8 @@ class NotificationService {
     String? payload,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'order_channel', 'Order Notifications',
-      channelDescription: 'Notifications when order is submitted',
+      'transaction_channel', 'Transaction Notifications',
+      channelDescription: 'Notifications when transaction is submitted',
       importance: Importance.high,
       priority: Priority.high,
     );

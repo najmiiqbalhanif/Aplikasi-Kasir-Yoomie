@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'pages/homepage.dart';
 import 'pages/shoppage.dart'; // Ini akan menjadi tab yang memuat Navigator bersarang
-import 'pages/ordersPage.dart';
+import 'pages/transactionsPage.dart';
 import 'pages/cartpage.dart';
 import 'pages/profilepage.dart';
 
@@ -24,7 +24,7 @@ class _MainLayoutState extends State<MainLayout> {
   final List<Widget> _pages = [
     const HomePage(),
     const ShopPage(), // ShopPage akan memiliki Navigator internalnya sendiri
-    const OrdersPage(),
+    const TransactionsPage(),
     const CartPage(),
     const ProfilePage(),
   ];
@@ -94,7 +94,7 @@ class _MainLayoutState extends State<MainLayout> {
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long_outlined),
             activeIcon: Icon(Icons.receipt_long),
-            label: 'Orders',
+            label: 'Transactions',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart_outlined),

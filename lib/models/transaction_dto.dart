@@ -1,15 +1,15 @@
-class OrderDTO {
+class TransactionDTO {
   final int id;
   final int userId;
   final String username;
-  final String createdOn; // Tanggal order
+  final String createdOn;
   final String cartSummary; // Ringkasan produk di cart
   final double totalAmount; // Total harga
   final String paymentMethod; // Metode pembayaran
   final String paymentStatus; // Status pembayaran
   final String address; // Alamat dari pembayaran
 
-  OrderDTO({
+  TransactionDTO({
     required this.id,
     required this.userId,
     required this.username,
@@ -21,8 +21,8 @@ class OrderDTO {
     required this.address,
   });
 
-  factory OrderDTO.fromJson(Map<String, dynamic> json) {
-    return OrderDTO(
+  factory TransactionDTO.fromJson(Map<String, dynamic> json) {
+    return TransactionDTO(
       id: json['id'],
       userId: json['userId'],
       username: json['username'],

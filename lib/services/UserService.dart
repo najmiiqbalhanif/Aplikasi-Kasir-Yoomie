@@ -10,7 +10,7 @@ class UserService {
   Future<User?> fetchUserProfile() async {
     try {
       // Ambil userId dari SharedPreferences
-      finalx prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('userId');
 
       if (userId == null) {

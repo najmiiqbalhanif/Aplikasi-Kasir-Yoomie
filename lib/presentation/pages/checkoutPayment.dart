@@ -119,7 +119,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           } else if (_currentStep < 2) {
             setState(() => _currentStep += 1);
           } else {
-            // This is the last step, handle submit order here if not already done in the button
+
           }
         },
         onStepCancel: () {
@@ -273,12 +273,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
             state: _currentStep == 1 ? StepState.editing : StepState.indexed,
           ),
           Step(
-            title: Text("3. Order Review"),
+            title: Text("3. Transaction Review"),
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Display Cart Items dynamically here
-                Text('Order Summary:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Text('Transaction Summary:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 SizedBox(height: 10),
                 // Using a Column and iterating through cartItems
                 // Consider using ListView.builder if the list can be very long and needs to scroll independently
@@ -375,7 +375,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: Text("Order Confirmed"),
+                            title: Text("Transaction Confirmed"),
                             content: Text("Thank you for your purchase!"),
                             actions: [
                               TextButton(
@@ -385,11 +385,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   // Ganti baris ini:
                                   // Navigator.pushAndRemoveUntil(
                                   //   context,
-                                  //   MaterialPageRoute(builder: (context) => OrdersPage()),
+                                  //   MaterialPageRoute(builder: (context) => TransactionsPage()),
                                   //       (route) => false,
                                   // );
 
-                                  // Dengan ini: Kembali ke MainLayout dan set indeks ke tab Orders (indeks 2)
+                                  // Dengan ini: Kembali ke MainLayout dan set indeks ke tab Transactions (indeks 2)
                                   Navigator.pushAndRemoveUntil(
                                     context,
                                     MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 2)),
@@ -404,7 +404,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       } catch (e) {
                         print('Checkout submission failed: $e');
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to submit order: $e')),
+                          SnackBar(content: Text('Failed to submit transaction: $e')),
                         );
                       }
 
@@ -413,7 +413,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       backgroundColor: const Color(0xFF041761),
                       padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                     ),
-                    child: Text("Submit Order", style: TextStyle(color: Colors.white)),
+                    child: Text("Submit Transaction", style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ],
