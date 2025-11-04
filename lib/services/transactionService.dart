@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/transaction_dto.dart'; // Buat model ini jika belum ada
+import '../models/transactionDTO.dart'; // Buat model ini jika belum ada
 
 class TransactionService {
   final String baseUrl;

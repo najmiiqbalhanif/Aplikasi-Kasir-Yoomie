@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/UserService.dart';
 import '../../models/user.dart';
-import 'editprofilepage.dart';
+import 'editProfilePage.dart';
 import 'FavoriteProductsPage.dart'; // <--- Import halaman favorit
 
 class ProfilePage extends StatefulWidget {

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../models/Product.dart';
 import '../../services/ProductService.dart';
-import 'productpage.dart'; // Disesuaikan
+import 'productPage.dart'; // Disesuaikan
 
-class ShopPage extends StatefulWidget {
-  const ShopPage({super.key});
+class PoSPage extends StatefulWidget {
+  const PoSPage({super.key});
 
   @override
-  State<ShopPage> createState() => _ShopPageState();
+  State<PoSPage> createState() => _PoSPageState();
 }
 
-class _ShopPageState extends State<ShopPage> with SingleTickerProviderStateMixin {
+class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
   late Future<List<Product>> _futureProducts;
   late TabController _tabController;
 
@@ -30,7 +30,7 @@ class _ShopPageState extends State<ShopPage> with SingleTickerProviderStateMixin
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: const Text(
-          'Shop',
+          'Point of Sale',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         bottom: TabBar(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:helloworld/presentation/pages/cart_provider.dart';
+import 'package:helloworld/presentation/pages/cartProvider.dart';
 import '../../services/cartService.dart';
 import '../../models/CartItem.dart';
 import 'package:shared_preferences/shared_preferences.dart';

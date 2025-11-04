@@ -1,10 +1,10 @@
 // lib/mainLayout.dart
 import 'package:flutter/material.dart';
 import 'pages/homepage.dart';
-import 'pages/shoppage.dart'; // Ini akan menjadi tab yang memuat Navigator bersarang
+import 'pages/posPage.dart'; // Ini akan menjadi tab yang memuat Navigator bersarang
 import 'pages/transactionsPage.dart';
 import 'pages/cartpage.dart';
-import 'pages/profilepage.dart';
+import 'pages/profilePage.dart';
 
 class MainLayout extends StatefulWidget {
   // Tambahkan parameter initialIndex
@@ -23,7 +23,7 @@ class _MainLayoutState extends State<MainLayout> {
   // Daftar halaman untuk BottomNavigationBar
   final List<Widget> _pages = [
     const HomePage(),
-    const ShopPage(), // ShopPage akan memiliki Navigator internalnya sendiri
+    const PoSPage(),
     const TransactionsPage(),
     const CartPage(),
     const ProfilePage(),
@@ -71,11 +71,11 @@ class _MainLayoutState extends State<MainLayout> {
           // Ketika berpindah tab, pastikan untuk kembali ke root dari Navigator internal
           if (_selectedIndex != index) {
             // Ini untuk memastikan bahwa ketika Anda beralih tab, stack navigasi tab sebelumnya direset
-            // Misalnya, jika Anda ada di ProductPage di tab Shop, dan beralih ke Home,
-            // saat kembali ke Shop, Anda akan kembali ke halaman utama Shop, bukan ProductPage.
+            // Misalnya, jika Anda ada di ProductPage di tab PoS, dan beralih ke Home,
+            // saat kembali ke PoS, Anda akan kembali ke halaman utama PoS, bukan ProductPage.
             // Anda bisa menyesuaikan perilaku ini jika ingin mempertahankan stack.
             // Untuk mereset stack, Anda bisa menggunakan Navigator.popUntil(context, (route) => route.isFirst);
-            // Tapi ini memerlukan GlobalKey untuk setiap Navigator, yang akan kita lakukan di ShopPage.
+            // Tapi ini memerlukan GlobalKey untuk setiap Navigator, yang akan kita lakukan di PoSPage.
           }
           setState(() => _selectedIndex = index);
         },
@@ -89,7 +89,7 @@ class _MainLayoutState extends State<MainLayout> {
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag_outlined),
             activeIcon: Icon(Icons.shopping_bag),
-            label: 'Shop',
+            label: 'PoS',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long_outlined),

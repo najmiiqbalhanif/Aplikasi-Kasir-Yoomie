@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:helloworld/presentation/pages/profilepage.dart';
+import 'package:helloworld/presentation/pages/profilePage.dart';
 import '../../models/Payment.dart';
 import '../../services/CheckoutService.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Import package provider
 import 'presentation/pages/login.dart'; // Arahkan ke LoginPage
-import 'services/notification_service.dart'; // Import NotificationService
-import 'presentation/pages/cart_provider.dart'; // Sesuaikan path ini (CartProvider)
+import 'services/notificationService.dart'; // Import NotificationService
+import 'presentation/pages/cartProvider.dart'; // Sesuaikan path ini (CartProvider)
 
 void main() async {
   // Pastikan binding Flutter sudah diinisialisasi sebelum memanggil native code

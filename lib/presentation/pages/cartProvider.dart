@@ -79,7 +79,7 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // di helloworld/presentation/pages/cart_provider.dart
+  // di helloworld/presentation/pages/cartProvider.dart
   void updateQuantity(Product product, int newQuantity) {
     final existingItemIndex = _items.indexWhere((item) => item.product.id == product.id);
     if (existingItemIndex >= 0) {

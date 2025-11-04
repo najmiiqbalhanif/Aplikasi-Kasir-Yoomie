@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'productpage.dart';
+import 'productPage.dart';
 import '../../services/homepageservice.dart';
 import '../../models/product.dart';
 
@@ -368,7 +368,7 @@ class BigPromoBanner extends StatelessWidget {
                     // Navigasi ke halaman produk, atau aksi lainnya
                   },
                   child: const Text(
-                    "Shop",
+                    "PoS",
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
