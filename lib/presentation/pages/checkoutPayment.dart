@@ -4,7 +4,7 @@ import '../../models/Payment.dart';
 import '../../services/CheckoutService.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/CartItem.dart'; // Import CartItem
-import '../../models/user.dart';
+import '../../models/cashier.dart';
 import '../mainLayout.dart'; // Import MainLayout
 
 String fullName = '';
@@ -45,24 +45,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadCashierData();
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadCashierData() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('userId'); // Get user ID from shared preferences
+    final cashierId = prefs.getInt('cashierId'); // Get cashier ID from shared preferences
 
-    if (userId != null) {
+    if (cashierId != null) {
       try {
-        final User user = await checkoutService.getUserById(userId); // Fetch user data
+        final Cashier cashier = await checkoutService.getCashierById(cashierId); // Fetch cashier data
         setState(() {
           // Assume fullname from backend is "First Last"
-          _fullNameController.text = user.fullname;
-          _emailController.text = user.email;
+          _fullNameController.text = cashier.fullName;
+          _emailController.text = cashier.email;
 
         });
       } catch (e) {
-        print('Error loading user data: $e');
+        print('Error loading cashier data: $e');
         // Optionally show a snackbar or error message
       }
     }
@@ -341,27 +341,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         return;
                       }
 
-                      // Retrieve user ID
+                      // Retrieve cashier ID
                       final prefs = await SharedPreferences.getInstance();
-                      final userId = prefs.getInt('userId');
+                      final cashierId = prefs.getInt('cashierId');
 
-                      if (userId == null) {
+                      if (cashierId == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('User not logged in.')),
+                          SnackBar(content: Text('Cashier not logged in.')),
                         );
                         return;
                       }
 
                       try {
                         final payment = PaymentDTO(
-                          userId: userId,
+                          cashierId: cashierId,
                           paymentMethod: _selectedPaymentMethod ?? 'credit',
                           address: isDelivery ? _addressController.text : (selectedLocation ?? 'N/A'),
                           totalAmount: widget.totalPrice,
                         );
 
                         final items = widget.cartItems.map((cartItem) => PaymentItemDTO(
-                          userId: userId,
+                          cashierId: cashierId,
                           name: cartItem.product.name,
                           quantity: cartItem.quantity,
                           price: cartItem.product.price,

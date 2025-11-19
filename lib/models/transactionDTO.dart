@@ -1,7 +1,7 @@
 class TransactionDTO {
   final int id;
-  final int userId;
-  final String username;
+  final int cashierId;
+  final String cashierName;
   final String createdOn;
   final String cartSummary; // Ringkasan produk di cart
   final double totalAmount; // Total harga
@@ -11,8 +11,8 @@ class TransactionDTO {
 
   TransactionDTO({
     required this.id,
-    required this.userId,
-    required this.username,
+    required this.cashierId,
+    required this.cashierName,
     required this.createdOn,
     required this.cartSummary,
     required this.totalAmount,
@@ -24,8 +24,8 @@ class TransactionDTO {
   factory TransactionDTO.fromJson(Map<String, dynamic> json) {
     return TransactionDTO(
       id: json['id'],
-      userId: json['userId'],
-      username: json['username'],
+      cashierId: json['cashierId'],
+      cashierName: json['cashierName'],
       createdOn: json['createdOn'],
       cartSummary: json['cartSummary'],
       totalAmount: json['totalAmount'].toDouble(),
@@ -38,8 +38,8 @@ class TransactionDTO {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'userId': userId,
-      'username': username,
+      'cashierId': cashierId,
+      'cashierName': cashierName,
       'createdOn': createdOn,
       'cartSummary': cartSummary,
       'totalAmount': totalAmount,

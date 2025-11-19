@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/UserService.dart';
-import '../../models/user.dart';
+import '../../services/CashierService.dart';
+import '../../models/cashier.dart';
 import 'editProfilePage.dart';
 import 'FavoriteProductsPage.dart'; // <--- Import halaman favorit
 
@@ -12,19 +12,19 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  User? user;
+  Cashier? cashier;
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    loadUserProfile();
+    loadCashierProfile();
   }
 
-  Future<void> loadUserProfile() async {
-    final fetchedUser = await UserService().fetchUserProfile();
+  Future<void> loadCashierProfile() async {
+    final fetchedCashier = await CashierService().fetchCashierProfile();
     setState(() {
-      user = fetchedUser;
+      cashier = fetchedCashier;
       isLoading = false;
     });
   }
@@ -55,10 +55,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   CircleAvatar(
                     radius: 48,
                     backgroundColor: Colors.grey,
-                    backgroundImage: user!.profileImage != null && user!.profileImage!.isNotEmpty
-                        ? NetworkImage(user!.profileImage!)
+                    backgroundImage: cashier!.profileImage != null && cashier!.profileImage!.isNotEmpty
+                        ? NetworkImage(cashier!.profileImage!)
                         : null,
-                    child: user!.profileImage == null || user!.profileImage!.isEmpty
+                    child: cashier!.profileImage == null || cashier!.profileImage!.isEmpty
                         ? const Icon(
                       Icons.person,
                       size: 60,
@@ -68,7 +68,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    user!.fullname,
+                    cashier!.fullName,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w500,
@@ -76,7 +76,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '@${user!.username}',
+                    '@${cashier!.cashierName}',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
@@ -94,7 +94,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     MaterialPageRoute(builder: (context) => const EditProfilePage()),
                   );
                   if (result == true) {
-                    await loadUserProfile();
+                    await loadCashierProfile();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

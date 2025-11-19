@@ -1,6 +1,6 @@
 // services/CheckoutService.dart
 import 'dart:convert';
-import 'package:helloworld/models/user.dart'; // Make sure this is your User model
+import 'package:helloworld/models/cashier.dart';
 import 'package:http/http.dart' as http;
 import '../models/Payment.dart'; // Ensure this points to your Payment DTOs
 
@@ -13,7 +13,7 @@ class CheckoutService {
     final url = Uri.parse('$baseUrl/api/checkoutpayment/submit');
 
     final body = {
-      ...payment.toJson(), // This includes userId (mapped to 'id') and other payment details
+      ...payment.toJson(),
       'paymentItems': items.map((item) => item.toJson()).toList(),
     };
 
@@ -32,14 +32,14 @@ class CheckoutService {
     }
   }
 
-  Future<User> getUserById(int userId) async {
-    final response = await http.get(Uri.parse('$baseUrl/api/users/$userId')); // Assuming API endpoint for user
+  Future<Cashier> getCashierById(int cashierId) async {
+    final response = await http.get(Uri.parse('$baseUrl/api/cashiers/$cashierId'));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return User.fromJson(data);
+      return Cashier.fromJson(data);
     } else {
-      throw Exception('Failed to load user: ${response.statusCode} - ${response.body}');
+      throw Exception('Failed to load cashier: ${response.statusCode} - ${response.body}');
     }
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../mainLayout.dart';
 import 'login.dart';
-import '../../models/user.dart';
+import '../../models/cashier.dart';
 import '../../services/authService.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -12,23 +11,26 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final TextEditingController fullnameController = TextEditingController();
-  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController fullNameController = TextEditingController();
+  final TextEditingController cashierNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final AuthService authService = AuthService();
 
-  void registerUser() async {
-    final user = User(
-      fullname: fullnameController.text.trim(),
-      username: usernameController.text.trim(),
+  void registerCashier() async {
+    final cashier = Cashier(
+      fullName: fullNameController.text.trim(),
+      cashierName: cashierNameController.text.trim(),
       email: emailController.text.trim(),
       password: passwordController.text,
     );
 
-    final success = await authService.register(user);
+    final success = await authService.register(cashier);
 
     if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Register berhasil! Silakan login.')),
+      );
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -133,7 +135,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 16),
                       TextField(
-                        controller: fullnameController,
+                        controller: fullNameController,
                         decoration: InputDecoration(
                           hintText: 'Fullname',
                           border: OutlineInputBorder(
@@ -143,9 +145,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        controller: usernameController,
+                        controller: cashierNameController,
                         decoration: InputDecoration(
-                          hintText: 'Username',
+                          hintText: 'CashierName',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                           ),
@@ -177,7 +179,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: registerUser,
+                          onPressed: registerCashier,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1F4D7B),
                             shape: RoundedRectangleBorder(

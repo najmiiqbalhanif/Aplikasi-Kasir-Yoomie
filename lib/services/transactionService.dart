@@ -24,8 +24,8 @@ class TransactionService {
     }
   }
 
-  Future<List<TransactionDTO>> fetchTransactionsByUserId(int userId) async {
-    final url = Uri.parse('$baseUrl/api/transactions/user/$userId'); // Endpoint untuk user tertentu
+  Future<List<TransactionDTO>> fetchTransactionsByCashierId(int cashierId) async {
+    final url = Uri.parse('$baseUrl/api/transactions/cashier/$cashierId'); // Endpoint untuk cashier tertentu
     try {
       final response = await http.get(url);
 
@@ -37,11 +37,11 @@ class TransactionService {
         return [];
       }
       else {
-        throw Exception('Failed to load user transactions: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to load cashier transactions: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error fetching user transactions: $e');
-      throw Exception('Network error or failed to fetch user transactions: $e');
+      print('Error fetching cashier transactions: $e');
+      throw Exception('Network error or failed to fetch cashier transactions: $e');
     }
   }
 }

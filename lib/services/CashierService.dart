@@ -1,28 +1,28 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart';
+import '../models/cashier.dart';
 
-class UserService {
+class CashierService {
   final String profileUrl = "http://10.0.2.2:8080/api/profilepage";
   final String editProfileUrl = "http://10.0.2.2:8080/api/editprofilepage";//masih emulator
 
-  Future<User?> fetchUserProfile() async {
+  Future<Cashier?> fetchCashierProfile() async {
     try {
-      // Ambil userId dari SharedPreferences
+      // Ambil cashierId dari SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('userId');
+      final cashierId = prefs.getInt('cashierId');
 
-      if (userId == null) {
-        print("User ID not found in SharedPreferences.");
+      if (cashierId == null) {
+        print("Cashier ID not found in SharedPreferences.");
         return null;
       }
 
-      final response = await http.get(Uri.parse("$profileUrl/$userId"));
+      final response = await http.get(Uri.parse("$profileUrl/$cashierId"));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return User.fromJson(data);
+        return Cashier.fromJson(data);
       } else {
         print("Failed to load profile. Status code: \${response.statusCode}");
         return null;
@@ -33,24 +33,24 @@ class UserService {
     }
   }
 
-  Future<bool> updateUserProfile({
-    required String username,
+  Future<bool> updateCashierProfile({
+    required String cashierName,
     required String email,
     required String fullName,
     String? profileImage,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('userId');
+      final cashierId = prefs.getInt('cashierId');
 
-      if (userId == null) {
-        print("User ID not found in SharedPreferences.");
+      if (cashierId == null) {
+        print("Cashier ID not found in SharedPreferences.");
         return false;
       }
 
-      var uri = Uri.parse("$editProfileUrl/$userId");
+      var uri = Uri.parse("$editProfileUrl/$cashierId");
       var request = http.MultipartRequest("PUT", uri);
-      request.fields['username'] = username;
+      request.fields['cashierName'] = cashierName;
       request.fields['email'] = email;
       request.fields['fullName'] = fullName;
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Untuk mendapatkan userId
+import 'package:shared_preferences/shared_preferences.dart'; // Untuk mendapatkan cashierId
 import '../../models/transactionDTO.dart';
 import '../../services/transactionService.dart';
 
@@ -33,18 +33,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('userId'); // Ambil userId dari SharedPreferences
+      final cashierId = prefs.getInt('cashierId'); // Ambil cashierId dari SharedPreferences
 
-      if (userId == null) {
+      if (cashierId == null) {
         setState(() {
           isLoading = false;
-          errorMessage = "User not logged in. Please log in to view your transactions.";
+          errorMessage = "Cashier not logged in. Please log in to view your transactions.";
         });
         return;
       }
 
-      // Ambil Transaction berdasarkan userId (lebih relevan)
-      final fetchedTransactions = await transactionService.fetchTransactionsByUserId(userId);
+      // Ambil Transaction berdasarkan cashierId (lebih relevan)
+      final fetchedTransactions = await transactionService.fetchTransactionsByCashierId(cashierId);
 
       setState(() {
         transactions = fetchedTransactions;

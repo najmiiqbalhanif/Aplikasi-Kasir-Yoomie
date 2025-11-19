@@ -12,11 +12,11 @@ import 'package:helloworld/presentation/pages/cartProvider.dart';
 import '../../models/CartItem.dart'; // <--- PASTIKAN INI ADA
 import 'package:url_launcher/url_launcher.dart';
 
-// Fungsi async untuk dapatkan userId dari SharedPreferences
-Future<int?> getUserId() async {
+// Fungsi async untuk dapatkan cashierId dari SharedPreferences
+Future<int?> getCashierId() async {
   final prefs = await SharedPreferences.getInstance();
-  if (prefs.containsKey('userId')) {
-    return prefs.getInt('userId');
+  if (prefs.containsKey('cashierId')) {
+    return prefs.getInt('cashierId');
   }
   return null;
 }
@@ -108,7 +108,7 @@ class _ProductPageState extends State<ProductPage> {
   int _currentPage = 0;
   bool _isFavorited = false;
   final FavoriteService _favoriteService = FavoriteService();
-  int? _currentUserId;
+  int? _currentCashierId;
 
   static const int MAX_QUANTITY_PER_ITEM = 10;
   bool _isAddingToCart = false; // <--- Variabel baru untuk melacak status penambahan
@@ -120,9 +120,9 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Future<void> _initializeProductAndFavorites() async {
-    _currentUserId = await getUserId();
-    if (_currentUserId == null) {
-      print('User is not logged in. Cannot fetch favorites.');
+    _currentCashierId = await getCashierId();
+    if (_currentCashierId == null) {
+      print('Cashier is not logged in. Cannot fetch favorites.');
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please log in to use favorites.')),
@@ -139,7 +139,7 @@ class _ProductPageState extends State<ProductPage> {
   void fetchProductDetail() async {
     try {
       Product fetchedProduct = await ProductService().getProductById(widget.id!);
-      bool favorited = await _favoriteService.isProductFavorited(_currentUserId!, fetchedProduct);
+      bool favorited = await _favoriteService.isProductFavorited(_currentCashierId!, fetchedProduct);
       setState(() {
         product = fetchedProduct;
         _isFavorited = favorited;
@@ -153,7 +153,7 @@ class _ProductPageState extends State<ProductPage> {
     }
   }
 
-  Future<void> addToCart(int userId, int productId) async {
+  Future<void> addToCart(int cashierId, int productId) async {
     if (_isAddingToCart) return; // <--- Cegah panggilan ganda jika sedang dalam proses
 
     setState(() {
@@ -184,7 +184,7 @@ class _ProductPageState extends State<ProductPage> {
       // Jika backend Anda bisa "mengupdate kuantitas", maka Anda bisa mengirim quantityToRequest = existingCartItem.quantity + 1;
       // Namun, karena ada masalah penambahan banyak, kita akan asumsikan backend Anda menambahkan 1 setiap kali API ini dipanggil.
 
-      final url = Uri.parse('http://10.0.2.2:8080/api/cart/add?userId=$userId&productId=$productId'); // <--- Hapus parameter &quantity jika backend hanya tambah 1
+      final url = Uri.parse('http://10.0.2.2:8080/api/cart/add?cashierId=$cashierId&productId=$productId'); // <--- Hapus parameter &quantity jika backend hanya tambah 1
 
       // Hapus Future.delayed ini, ini bisa menyebabkan masalah double-tap
       // await Future.delayed(const Duration(milliseconds: 500));
@@ -468,10 +468,10 @@ class _ProductPageState extends State<ProductPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading || _currentUserId == null) {
+    if (isLoading || _currentCashierId == null) {
       return Scaffold(
         body: Center(
-          child: _currentUserId == null
+          child: _currentCashierId == null
               ? const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -594,13 +594,13 @@ class _ProductPageState extends State<ProductPage> {
                     child: ElevatedButton(
                       // Nonaktifkan tombol saat _isAddingToCart true
                       onPressed: _isAddingToCart ? null : () async {
-                        if (_currentUserId == null) {
+                        if (_currentCashierId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Please log in to add to cart.')),
                           );
                           return;
                         }
-                        await addToCart(_currentUserId!, product!.id!);
+                        await addToCart(_currentCashierId!, product!.id!);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
@@ -624,8 +624,8 @@ class _ProductPageState extends State<ProductPage> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () async {
-                        if (product != null && _currentUserId != null) {
-                          bool newFavoriteStatus = await _favoriteService.toggleFavorite(_currentUserId!, product!);
+                        if (product != null && _currentCashierId != null) {
+                          bool newFavoriteStatus = await _favoriteService.toggleFavorite(_currentCashierId!, product!);
                           setState(() {
                             _isFavorited = newFavoriteStatus;
                           });
@@ -636,7 +636,7 @@ class _ProductPageState extends State<ProductPage> {
                               ),
                             ),
                           );
-                        } else if (_currentUserId == null) {
+                        } else if (_currentCashierId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Please log in to add to favorites.')),
                           );

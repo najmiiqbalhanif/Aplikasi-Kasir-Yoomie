@@ -1,13 +1,13 @@
 // payment.dart
 class PaymentItemDTO {
-  final int userId;
+  final int cashierId;
   String name;
   int quantity;
   double price; // Add product price
   double subTotal;
 
   PaymentItemDTO({
-    required this.userId,
+    required this.cashierId,
     required this.name,
     required this.quantity,
     required this.price,
@@ -15,7 +15,7 @@ class PaymentItemDTO {
   });
 
   Map<String, dynamic> toJson() => {
-    'userId': userId,
+    'cashierId': cashierId,
     'productName': name,
     'quantity': quantity,
     'price': price,
@@ -25,20 +25,20 @@ class PaymentItemDTO {
 }
 
 class PaymentDTO {
-  int userId; // This is the user ID from SharedPreferences
+  int cashierId; // This is the cashier ID from SharedPreferences
   String paymentMethod;
   String address;
   double totalAmount;
 
   PaymentDTO({
-    required this.userId,
+    required this.cashierId,
     required this.paymentMethod,
     required this.address,
     required this.totalAmount,
   });
 
   Map<String, dynamic> toJson() => {
-    'userId': userId,
+    'cashierId': cashierId,
     'paymentMethod': paymentMethod,
     'address': address,
     'totalAmount': totalAmount,

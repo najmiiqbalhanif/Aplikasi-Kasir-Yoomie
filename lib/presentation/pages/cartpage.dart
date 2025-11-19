@@ -25,16 +25,16 @@ class _CartPageState extends State<CartPage> {
 
   Future<int?> _initializeCartData() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('userId');
+    final cashierId = prefs.getInt('cashierId');
 
-    if (userId == null) {
+    if (cashierId == null) {
       return null;
     }
 
     try {
-      final initialCartItems = await _cartService.getCartItems(userId);
+      final initialCartItems = await _cartService.getCartItems(cashierId);
       if (!mounted) {
-        return userId;
+        return cashierId;
       }
 
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -45,14 +45,14 @@ class _CartPageState extends State<CartPage> {
           cartProvider.addExistingItem(item.product, item.quantity);
         }
       }
-      return userId;
+      return cashierId;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load cart data: ${e.toString()}')),
         );
       }
-      return userId;
+      return cashierId;
     }
   }
 
@@ -69,7 +69,7 @@ class _CartPageState extends State<CartPage> {
           return const Scaffold(body: Center(child: Text("Silakan login untuk melihat keranjang Anda.")));
         }
 
-        final userId = snapshot.data!;
+        final cashierId = snapshot.data!;
 
         return Consumer<CartProvider>(
           builder: (context, cartProvider, child) {
@@ -107,7 +107,7 @@ class _CartPageState extends State<CartPage> {
                         itemBuilder: (context, index) {
                           return Column(
                             children: [
-                              _buildCartItem(context, cartItems[index], userId),
+                              _buildCartItem(context, cartItems[index], cashierId),
                               if (index < cartItems.length - 1)
                                 Divider(
                                   height: 32,
@@ -299,7 +299,7 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildCartItem(BuildContext context, CartItem cartItem, int userId) {
+  Widget _buildCartItem(BuildContext context, CartItem cartItem, int cashierId) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
     return Padding(
@@ -331,7 +331,7 @@ class _CartPageState extends State<CartPage> {
                     if (selectedQuantity != null) {
                       if (selectedQuantity == 0) {
                         try {
-                          await _cartService.removeProductFromCart(userId, cartItem.product.id!);
+                          await _cartService.removeProductFromCart(cashierId, cartItem.product.id!);
                           cartProvider.removeItem(cartItem.product);
                         } catch (e) {
                           if (mounted) {
@@ -342,7 +342,7 @@ class _CartPageState extends State<CartPage> {
                         }
                       } else if (selectedQuantity != cartItem.quantity) {
                         try {
-                          await _cartService.updateProductQuantity(userId, cartItem.product.id!, selectedQuantity);
+                          await _cartService.updateProductQuantity(cashierId, cartItem.product.id!, selectedQuantity);
                           cartProvider.updateQuantity(cartItem.product, selectedQuantity);
                         } catch (e) {
                           if (mounted) {

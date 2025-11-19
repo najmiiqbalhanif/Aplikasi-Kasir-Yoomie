@@ -16,7 +16,7 @@ class _FavoriteProductsPageState extends State<FavoriteProductsPage> {
   final FavoriteService _favoriteService = FavoriteService();
   List<Product> _favoriteProducts = [];
   bool _isLoading = true;
-  int? _currentUserId; // <--- Tambahkan variabel ini
+  int? _currentCashierId; // <--- Tambahkan variabel ini
 
   @override
   void initState() {
@@ -26,10 +26,10 @@ class _FavoriteProductsPageState extends State<FavoriteProductsPage> {
 
   // Fungsi inisialisasi baru
   Future<void> _initializeFavorites() async {
-    _currentUserId = await getUserId(); // Dapatkan userId saat inisialisasi
-    if (_currentUserId == null) {
-      // Handle case where user is not logged in
-      print('User is not logged in. Cannot load favorites.');
+    _currentCashierId = await getCashierId(); // Dapatkan cashierId saat inisialisasi
+    if (_currentCashierId == null) {
+      // Handle case where cashier is not logged in
+      print('Cashier is not logged in. Cannot load favorites.');
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please log in to view favorites.')),
@@ -40,17 +40,17 @@ class _FavoriteProductsPageState extends State<FavoriteProductsPage> {
       });
       return;
     }
-    _loadFavorites(); // Lanjutkan memuat favorit jika userId ada
+    _loadFavorites(); // Lanjutkan memuat favorit jika cashierId ada
   }
 
   Future<void> _loadFavorites() async {
-    if (_currentUserId == null) return; // Pastikan userId ada sebelum memuat
+    if (_currentCashierId == null) return; // Pastikan cashierId ada sebelum memuat
 
     setState(() {
       _isLoading = true;
     });
-    // Panggil getFavorites dengan userId
-    List<Product> favorites = await _favoriteService.getFavorites(_currentUserId!);
+    // Panggil getFavorites dengan cashierId
+    List<Product> favorites = await _favoriteService.getFavorites(_currentCashierId!);
     setState(() {
       _favoriteProducts = favorites;
       _isLoading = false;
@@ -58,10 +58,10 @@ class _FavoriteProductsPageState extends State<FavoriteProductsPage> {
   }
 
   Future<void> _removeFavorite(Product product) async {
-    if (_currentUserId == null) return; // Pastikan userId ada sebelum menghapus
+    if (_currentCashierId == null) return; // Pastikan cashierId ada sebelum menghapus
 
-    // Panggil toggleFavorite dengan userId
-    await _favoriteService.toggleFavorite(_currentUserId!, product);
+    // Panggil toggleFavorite dengan cashierId
+    await _favoriteService.toggleFavorite(_currentCashierId!, product);
     _loadFavorites(); // Muat ulang daftar setelah penghapusan
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${product.name} removed from favorites')),
@@ -70,8 +70,8 @@ class _FavoriteProductsPageState extends State<FavoriteProductsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Tambahkan kondisi untuk menangani jika _currentUserId null
-    if (_isLoading || _currentUserId == null) {
+    // Tambahkan kondisi untuk menangani jika _currentCashierId null
+    if (_isLoading || _currentCashierId == null) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Favorites'),
@@ -81,7 +81,7 @@ class _FavoriteProductsPageState extends State<FavoriteProductsPage> {
           foregroundColor: Colors.black,
         ),
         body: Center(
-          child: _currentUserId == null
+          child: _currentCashierId == null
               ? const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

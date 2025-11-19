@@ -11,8 +11,8 @@ class CartService {
   static const String BASE_URL = 'http://10.0.2.2:8080';
 
   // --- Metode untuk mendapatkan item keranjang ---
-  Future<List<CartItem>> getCartItems(int userId) async {
-    final url = Uri.parse('$BASE_URL/api/cart/items/$userId');
+  Future<List<CartItem>> getCartItems(int cashierId) async {
+    final url = Uri.parse('$BASE_URL/api/cart/items/$cashierId');
     try {
       final response = await http.get(url);
 
@@ -20,8 +20,6 @@ class CartService {
         List<dynamic> jsonResponse = json.decode(response.body);
         return jsonResponse.map((data) => CartItem.fromJson(data)).toList();
       } else if (response.statusCode == 404) {
-        // Jika keranjang kosong atau user tidak ditemukan, backend mungkin mengembalikan 404
-        // Kita bisa mengembalikan list kosong di sini
         return [];
       } else {
         throw Exception('Failed to load cart items: ${response.statusCode} - ${response.body}');
@@ -33,8 +31,8 @@ class CartService {
   }
 
   // --- Metode untuk menambah produk ke keranjang ---
-  Future<void> addProductToCart(int userId, int productId) async {
-    final url = Uri.parse('$BASE_URL/api/cart/add?userId=$userId&productId=$productId');
+  Future<void> addProductToCart(int cashierId, int productId) async {
+    final url = Uri.parse('$BASE_URL/api/cart/add?cashierId=$cashierId&productId=$productId');
     final response = await http.post(url); // Atau GET jika API Anda menggunakan GET untuk add
 
     if (response.statusCode != 200) {
@@ -43,8 +41,8 @@ class CartService {
   }
 
   // --- Metode untuk mengurangi kuantitas produk ---
-  Future<void> decreaseProductQuantity(int userId, int productId) async {
-    final url = Uri.parse('$BASE_URL/api/cart/decrease?userId=$userId&productId=$productId');
+  Future<void> decreaseProductQuantity(int cashierId, int productId) async {
+    final url = Uri.parse('$BASE_URL/api/cart/decrease?cashierId=$cashierId&productId=$productId');
     final response = await http.post(url); // Menggunakan POST seperti di controller Anda
 
     if (response.statusCode != 200) {
@@ -53,8 +51,8 @@ class CartService {
   }
 
   // --- Metode untuk menghapus produk dari keranjang ---
-  Future<void> removeProductFromCart(int userId, int productId) async {
-    final url = Uri.parse('$BASE_URL/api/cart/remove?userId=$userId&productId=$productId');
+  Future<void> removeProductFromCart(int cashierId, int productId) async {
+    final url = Uri.parse('$BASE_URL/api/cart/remove?cashierId=$cashierId&productId=$productId');
     final response = await http.delete(url); // Menggunakan DELETE seperti di controller Anda
 
     if (response.statusCode != 200) {
@@ -63,9 +61,9 @@ class CartService {
   }
 
   // --- Metode untuk memperbarui kuantitas produk ---
-  Future<void> updateProductQuantity(int userId, int productId, int newQuantity) async {
+  Future<void> updateProductQuantity(int cashierId, int productId, int newQuantity) async {
     // PASTIKAN PEMBENTUKAN URL BERSIH DARI KARAKTER TAMBAHAN
-    final url = Uri.parse('$BASE_URL/api/cart/updateQuantity?userId=$userId&productId=$productId&quantity=$newQuantity');
+    final url = Uri.parse('$BASE_URL/api/cart/updateQuantity?cashierId=$cashierId&productId=$productId&quantity=$newQuantity');
 
     final response = await http.post(url); // Menggunakan POST seperti di controller Anda
 

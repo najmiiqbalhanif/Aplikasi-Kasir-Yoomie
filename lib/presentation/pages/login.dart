@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  Future<void> loginUser() async {
+  Future<void> loginCashier() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
@@ -29,12 +29,12 @@ class _LoginPageState extends State<LoginPage> {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      final userId = responseData['id'];
-      final userFullname = responseData['fullName']; // Ambil fullname dari respons API
+      final cashierId = responseData['id'];
+      final cashierFullname = responseData['fullName']; // Ambil fullname dari respons API
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('userId', userId);
-      await prefs.setString('userName', userFullname); // Simpan fullname ke SharedPreferences
+      await prefs.setInt('cashierId', cashierId);
+      await prefs.setString('cashierName', cashierFullname); // Simpan fullname ke SharedPreferences
 
       Navigator.pushReplacement(
         context,
@@ -164,7 +164,7 @@ class _LoginPageState extends State<LoginPage> {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: loginUser,
+                          onPressed: loginCashier,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1F4D7B),
                             shape: RoundedRectangleBorder(

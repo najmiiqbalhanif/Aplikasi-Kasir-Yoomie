@@ -14,22 +14,22 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List<Product> _products = [];
   bool _isLoading = true;
-  String _userName = 'Pengguna'; // Nilai default jika nama belum tersedia
+  String _cashierName = 'Pengguna'; // Nilai default jika nama belum tersedia
 
   @override
   void initState() {
     super.initState();
-    _loadUserName(); // Panggil fungsi untuk memuat nama pengguna
+    _loadCashierName(); // Panggil fungsi untuk memuat nama pengguna
     fetchProducts();
   }
 
   // Fungsi baru untuk memuat nama pengguna dari SharedPreferences
-  Future<void> _loadUserName() async {
+  Future<void> _loadCashierName() async {
     final prefs = await SharedPreferences.getInstance();
-    final userName = prefs.getString('userName'); // Ambil nilai dari kunci 'userName'
-    if (userName != null && userName.isNotEmpty) {
+    final cashierName = prefs.getString('cashierName'); // Ambil nilai dari kunci 'cashierName'
+    if (cashierName != null && cashierName.isNotEmpty) {
       setState(() {
-        _userName = userName;
+        _cashierName = cashierName;
       });
     }
   }
@@ -58,7 +58,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "Selamat Datang, $_userName", // Gunakan nama pengguna yang dimuat di sini
+          "Selamat Datang, $_cashierName", // Gunakan nama pengguna yang dimuat di sini
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
         ),
       ),

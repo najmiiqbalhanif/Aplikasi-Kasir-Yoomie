@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../models/user.dart';
-import '../../services/UserService.dart';
+import '../../models/cashier.dart';
+import '../../services/CashierService.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({Key? key}) : super(key: key);
@@ -13,30 +13,30 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final _userService = UserService();
+  final _cashierService = CashierService();
 
   TextEditingController _fullNameController = TextEditingController();
-  TextEditingController _usernameController = TextEditingController();
+  TextEditingController _cashierNameController = TextEditingController();
   TextEditingController _emailController = TextEditingController();
 
   File? _selectedImage;
-  User? _user;
+  Cashier? _cashier;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadCashierData();
   }
 
-  Future<void> _loadUserData() async {
-    final user = await _userService.fetchUserProfile();
-    if (user != null) {
+  Future<void> _loadCashierData() async {
+    final cashier = await _cashierService.fetchCashierProfile();
+    if (cashier != null) {
       setState(() {
-        _user = user;
-        _fullNameController.text = user.fullname ?? '';
-        _usernameController.text = user.username ?? '';
-        _emailController.text = user.email ?? '';
+        _cashier = cashier;
+        _fullNameController.text = cashier.fullName ?? '';
+        _cashierNameController.text = cashier.cashierName ?? '';
+        _emailController.text = cashier.email ?? '';
         _isLoading = false;
       });
     }
@@ -54,9 +54,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       final hasChanges =
-          _fullNameController.text != _user!.fullname ||
-              _usernameController.text != _user!.username ||
-              _emailController.text != _user!.email ||
+          _fullNameController.text != _cashier!.fullName ||
+              _cashierNameController.text != _cashier!.cashierName ||
+              _emailController.text != _cashier!.email ||
               _selectedImage != null;
 
       if (!hasChanges) {
@@ -64,8 +64,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         return;
       }
 
-      final success = await _userService.updateUserProfile(
-        username: _usernameController.text,
+      final success = await _cashierService.updateCashierProfile(
+        cashierName: _cashierNameController.text,
         email: _emailController.text,
         fullName: _fullNameController.text,
         profileImage: _selectedImage?.path,
@@ -108,8 +108,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       radius: 50,
                       backgroundImage: _selectedImage != null
                           ? FileImage(_selectedImage!)
-                          : (_user?.profileImage != null
-                          ? NetworkImage(_user!.profileImage!) as ImageProvider
+                          : (_cashier?.profileImage != null
+                          ? NetworkImage(_cashier!.profileImage!) as ImageProvider
                           : AssetImage('assets/default_profile.png')),
                     ),
                     Container(
@@ -135,8 +135,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 10),
               TextFormField(
-                controller: _usernameController,
-                decoration: InputDecoration(labelText: 'Username'),
+                controller: _cashierNameController,
+                decoration: InputDecoration(labelText: 'CashierName'),
                 validator: (value) => value!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 10),
