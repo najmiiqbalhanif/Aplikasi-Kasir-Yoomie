@@ -27,20 +27,17 @@ class PaymentItemDTO {
 class PaymentDTO {
   int cashierId; // This is the cashier ID from SharedPreferences
   String paymentMethod;
-  String address;
   double totalAmount;
 
   PaymentDTO({
     required this.cashierId,
     required this.paymentMethod,
-    required this.address,
     required this.totalAmount,
   });
 
   Map<String, dynamic> toJson() => {
     'cashierId': cashierId,
     'paymentMethod': paymentMethod,
-    'address': address,
     'totalAmount': totalAmount,
   };
 

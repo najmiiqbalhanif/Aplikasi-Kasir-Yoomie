@@ -28,7 +28,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _formKey = GlobalKey<FormState>();
 
   TextEditingController _fullNameController = TextEditingController();
-  TextEditingController _addressController = TextEditingController();
   TextEditingController _emailController = TextEditingController();
 
 
@@ -71,7 +70,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void dispose() {
     _fullNameController.dispose();
-    _addressController.dispose();
     _emailController.dispose();
     super.dispose();
   }
@@ -208,11 +206,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       decoration: InputDecoration(labelText: "Full Name"),
                       validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                       // onChanged is not needed if using controller and validation is done on continue
-                    ),
-                    TextFormField(
-                      controller: _addressController,
-                      decoration: InputDecoration(labelText: "Address"),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                     ),
                     TextFormField(
                       controller: _emailController,
@@ -356,7 +349,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         final payment = PaymentDTO(
                           cashierId: cashierId,
                           paymentMethod: _selectedPaymentMethod ?? 'credit',
-                          address: isDelivery ? _addressController.text : (selectedLocation ?? 'N/A'),
                           totalAmount: widget.totalPrice,
                         );
 

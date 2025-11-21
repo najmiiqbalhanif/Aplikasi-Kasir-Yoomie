@@ -6,8 +6,6 @@ class TransactionDTO {
   final String cartSummary; // Ringkasan produk di cart
   final double totalAmount; // Total harga
   final String paymentMethod; // Metode pembayaran
-  final String paymentStatus; // Status pembayaran
-  final String address; // Alamat dari pembayaran
 
   TransactionDTO({
     required this.id,
@@ -17,8 +15,6 @@ class TransactionDTO {
     required this.cartSummary,
     required this.totalAmount,
     required this.paymentMethod,
-    required this.paymentStatus,
-    required this.address,
   });
 
   factory TransactionDTO.fromJson(Map<String, dynamic> json) {
@@ -30,8 +26,6 @@ class TransactionDTO {
       cartSummary: json['cartSummary'],
       totalAmount: json['totalAmount'].toDouble(),
       paymentMethod: json['paymentMethod'],
-      paymentStatus: json['paymentStatus'],
-      address: json['address'],
     );
   }
 
@@ -44,8 +38,6 @@ class TransactionDTO {
       'cartSummary': cartSummary,
       'totalAmount': totalAmount,
       'paymentMethod': paymentMethod,
-      'paymentStatus': paymentStatus,
-      'address': address,
     };
   }
 }

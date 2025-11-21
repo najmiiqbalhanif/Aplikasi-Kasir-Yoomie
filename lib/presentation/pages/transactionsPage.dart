@@ -133,8 +133,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Payment Method: ${transaction.paymentMethod}'),
-                    Text('Payment Status: ${transaction.paymentStatus}'),
-                    Text('Address: ${transaction.address}'),
                     const Divider(),
                     Text(
                       'Items: ${transaction.cartSummary}', // Menampilkan ringkasan cart
