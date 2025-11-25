@@ -51,6 +51,7 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
       body: Column(
         children: [
           // HEADER GRADIENT + TABBAR
+          const SizedBox(height: 25),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -118,16 +119,20 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
                   ),
                   child: TabBar(
                     controller: _tabController,
-                    // FALSE supaya tab merata kiri-kanan (tidak nempel di kiri)
                     isScrollable: false,
+                    dividerColor: Colors.transparent, // biar ga ada garis hitam
+
                     indicator: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(999),
                     ),
+
+                    // tambahkan horizontal kecil supaya indicator sedikit lebih lebar
                     indicatorPadding: const EdgeInsets.symmetric(
                       vertical: 4,
-                      horizontal: 2,
+                      horizontal: 6,
                     ),
+
                     labelColor: primaryGradientEnd,
                     unselectedLabelColor: Colors.white,
                     labelStyle: const TextStyle(
@@ -137,13 +142,19 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
                     unselectedLabelStyle: const TextStyle(
                       fontSize: 12.5,
                     ),
-                    tabs: _categories
-                        .map(
+
+                    tabs: _categories.map(
                           (cat) => Tab(
-                        child: Text(cat['label']!),
+                        // ⬇⬇ ini yang bikin pill putih lebih lebar dari teks
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: Text(
+                            cat['label']!,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ),
-                    )
-                        .toList(),
+                    ).toList(),
                   ),
                 ),
               ],

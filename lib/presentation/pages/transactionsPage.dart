@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Untuk mendapatkan cashierId
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/transactionDTO.dart';
 import '../../services/transactionService.dart';
+
+// Theme konsisten dengan halaman lain
+const Color kBackgroundColor = Color(0xFFF3F6FD);
+const Color kPrimaryGradientStart = Color(0xFF3B82F6);
+const Color kPrimaryGradientEnd = Color(0xFF4F46E5);
+const Color kTextGrey = Color(0xFF6B7280);
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -15,14 +21,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
   List<TransactionDTO> transactions = [];
   bool isLoading = true;
   String? errorMessage;
-  final TransactionService transactionService = TransactionService(baseUrl: 'http://10.0.2.2:8080'); // Inisialisasi service
 
-  final NumberFormat currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+  final TransactionService transactionService =
+  TransactionService(baseUrl: 'http://10.0.2.2:8080');
+
+  final NumberFormat currencyFormat = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
     super.initState();
-    _fetchTransactions(); // Panggil saat initState
+    _fetchTransactions();
   }
 
   Future<void> _fetchTransactions() async {
@@ -33,117 +45,353 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cashierId = prefs.getInt('cashierId'); // Ambil cashierId dari SharedPreferences
+      final cashierId = prefs.getInt('cashierId');
 
       if (cashierId == null) {
         setState(() {
           isLoading = false;
-          errorMessage = "Cashier not logged in. Please log in to view your transactions.";
+          errorMessage =
+          "Cashier belum login. Silakan login untuk melihat riwayat transaksi.";
         });
         return;
       }
 
-      // Ambil Transaction berdasarkan cashierId (lebih relevan)
-      final fetchedTransactions = await transactionService.fetchTransactionsByCashierId(cashierId);
+      final fetchedTransactions =
+      await transactionService.fetchTransactionsByCashierId(cashierId);
 
       setState(() {
         transactions = fetchedTransactions;
         isLoading = false;
       });
     } catch (e) {
+      // ignore: avoid_print
       print('Error fetching transactions: $e');
       setState(() {
         isLoading = false;
-        errorMessage = 'Failed to load transactions. Please try again later. ($e)';
+        errorMessage =
+        'Gagal memuat transaksi. Coba lagi beberapa saat lagi.\n($e)';
       });
+    }
+  }
+
+  String _formatDate(String createdOn) {
+    try {
+      final dt = DateTime.parse(createdOn);
+      return DateFormat('dd MMM yyyy • HH:mm', 'id_ID').format(dt);
+    } catch (_) {
+      // fallback: ambil tanggal saja kalau format tidak sesuai
+      return createdOn.split('T').first;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Transactions',
-          style: TextStyle(fontWeight: FontWeight.bold),
+      backgroundColor: kBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: _buildBody(),
+            ),
+          ],
         ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+    );
+  }
+
+  // ================= HEADER =================
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red, fontSize: 16),
+                'Transactions',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _fetchTransactions,
-                child: const Text("Retry"),
+              SizedBox(height: 2),
+              Text(
+                'Lihat riwayat transaksi kasir Anda.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
-        ),
-      )
-          : transactions.isEmpty
-          ? const Center(child: Text("No transactions found."))
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: transactions.length,
-        itemBuilder: (context, index) {
-          final transaction = transactions[index];
-          return ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Transaction ID: ${transaction.id}",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text("Date: ${transaction.createdOn.split('T')[0]}") // Mengambil tanggal saja
-                  ],
+          IconButton(
+            onPressed: () {
+              _fetchTransactions();
+            },
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: Colors.white,
+            ),
+            tooltip: 'Refresh',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= BODY =================
+
+  Widget _buildBody() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
                 ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.redAccent,
+                  size: 32,
+                ),
+                const SizedBox(height: 10),
                 Text(
-                  currencyFormat.format(transaction.totalAmount),
+                  errorMessage!,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                     color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _fetchTransactions,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryGradientEnd,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 10,
+                    ),
+                  ),
+                  child: const Text(
+                    "Coba lagi",
+                    style: TextStyle(fontSize: 13),
                   ),
                 ),
               ],
             ),
+          ),
+        ),
+      );
+    }
+
+    if (transactions.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 40,
+                color: kTextGrey,
+              ),
+              SizedBox(height: 10),
+              Text(
+                "Belum ada transaksi.",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Transaksi yang kamu lakukan di PoS\nakan muncul di sini.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: kTextGrey,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchTransactions,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        itemCount: transactions.length,
+        itemBuilder: (context, index) {
+          final transaction = transactions[index];
+          return _buildTransactionCard(transaction);
+        },
+      ),
+    );
+  }
+
+  // ================= TRANSACTION CARD =================
+
+  Widget _buildTransactionCard(TransactionDTO transaction) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Theme(
+        // Hilangkan garis divider default ExpansionTile
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          tilePadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          childrenPadding:
+          const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          title: Row(
             children: [
-              // Karena cartSummary adalah String, kita akan menampilkannya langsung
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Payment Method: ${transaction.paymentMethod}'),
-                    const Divider(),
                     Text(
-                      'Items: ${transaction.cartSummary}', // Menampilkan ringkasan cart
-                      style: const TextStyle(fontStyle: FontStyle.italic),
+                      '#${transaction.id}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatDate(transaction.createdOn),
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: kTextGrey,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  currencyFormat.format(transaction.totalAmount),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
-          );
-        },
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.payment_outlined,
+                  size: 14,
+                  color: kTextGrey,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  transaction.paymentMethod,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: kTextGrey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          children: [
+            const Divider(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Ringkasan item:',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[900],
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              transaction.cartSummary,
+              style: const TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: kTextGrey,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

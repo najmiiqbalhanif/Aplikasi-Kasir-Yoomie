@@ -51,16 +51,6 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: SizedBox(
-          height: 45,
-          child: Image.asset(
-            'assets/images/athletezone-logo-mini.png', // Pastikan path ini benar
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
