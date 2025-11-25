@@ -17,6 +17,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController passwordController = TextEditingController();
   final AuthService authService = AuthService();
 
+  bool _obscurePassword = true;
+
   void registerCashier() async {
     final cashier = Cashier(
       fullName: fullNameController.text.trim(),
@@ -43,163 +45,384 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   @override
+  void dispose() {
+    fullNameController.dispose();
+    cashierNameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final double maxBoxWidth = 350;
+    const backgroundColor = Color(0xFFF3F6FD);
+    const textGrey = Color(0xFF6B7280);
+    const primaryGradientStart = Color(0xFF3B82F6);
+    const primaryGradientEnd = Color(0xFF4F46E5);
+
+    final double maxCardWidth = 420;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: backgroundColor,
       body: Center(
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Kotak biru logo
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxBoxWidth),
-                child: Container(
-                  width: double.infinity,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1F4D7B),
-                    borderRadius: BorderRadius.circular(20),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxCardWidth),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 20,
+                    offset: const Offset(0, 12),
                   ),
-                  child: Center(
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // PANEL GRADASI (dipadatkan paddingnya)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(32),
+                        topRight: Radius.circular(32),
+                      ),
+                      gradient: LinearGradient(
+                        colors: [primaryGradientStart, primaryGradientEnd],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset('assets/images/logo.png', height: 60),
-                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFFFBBF24),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Yoomie Cashier',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  height: 30,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Text(
+                                'Buat akun kasir baru dan mulai kelola transaksi di Yoomie.',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
                         const Text(
-                          'Be Verified',
+                          'Daftarkan kasir agar dapat login ke aplikasi dan mengelola penjualan dengan aman.',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontFamily: 'Courier',
-                            fontWeight: FontWeight.bold,
+                            color: Colors.white70,
+                            fontSize: 12,
+                            height: 1.4,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 24),
-
-              // Kotak putih form register
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxBoxWidth),
-                child: Container(
-                  padding: const EdgeInsets.all(24.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Get Started',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                  // FORM REGISTER (spacing diperkecil)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Create Cashier Account',
+                          style: TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Text("Already have an account? "),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const LoginPage()),
-                              );
-                            },
-                            child: const Text(
-                              "Sign in",
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Isi data kasir untuk membuat akun baru.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: textGrey,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Text(
+                              'Already have an account? ',
                               style: TextStyle(
-                                color: Colors.indigo,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 12.5,
+                                color: textGrey,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const LoginPage()),
+                                );
+                              },
+                              child: const Text(
+                                'Sign in',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: primaryGradientEnd,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        const Text(
+                          'Nama lengkap',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        TextField(
+                          controller: fullNameController,
+                          decoration: InputDecoration(
+                            hintText: 'Nama lengkap kasir',
+                            hintStyle: const TextStyle(
+                              fontSize: 12.5,
+                              color: textGrey,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF3F4F6),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        const Text(
+                          'Nama kasir (username)',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        TextField(
+                          controller: cashierNameController,
+                          decoration: InputDecoration(
+                            hintText: 'Contoh: kasir1, kasir_toko',
+                            hintStyle: const TextStyle(
+                              fontSize: 12.5,
+                              color: textGrey,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF3F4F6),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        const Text(
+                          'Email',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        TextField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            hintText: 'kasir@tokoanda.com',
+                            hintStyle: const TextStyle(
+                              fontSize: 12.5,
+                              color: textGrey,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF3F4F6),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        const Text(
+                          'Password',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        TextField(
+                          controller: passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            hintText: 'Buat password',
+                            hintStyle: const TextStyle(
+                              fontSize: 12.5,
+                              color: textGrey,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF3F4F6),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              borderSide: BorderSide.none,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 20,
+                                color: textGrey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        GestureDetector(
+                          onTap: registerCashier,
+                          child: Container(
+                            width: double.infinity,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  primaryGradientStart,
+                                  primaryGradientEnd,
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryGradientStart.withOpacity(0.32),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 7),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Create Account',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: fullNameController,
-                        decoration: InputDecoration(
-                          hintText: 'Fullname',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: cashierNameController,
-                        decoration: InputDecoration(
-                          hintText: 'CashierName',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: emailController,
-                        decoration: InputDecoration(
-                          hintText: 'Email',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: registerCashier,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1F4D7B),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                          child: const Text(
-                            'Sign Up',
+
+                        const SizedBox(height: 12),
+
+                        const Center(
+                          child: Text(
+                            'Dengan membuat akun, Anda menyetujui ketentuan penggunaan Yoomie.',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
+                              fontSize: 11,
+                              color: textGrey,
+                              height: 1.3,
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

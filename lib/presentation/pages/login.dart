@@ -16,6 +16,9 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  bool _obscurePassword = true;
+  bool _rememberMe = false; // untuk tampilan checkbox
+
   Future<void> loginCashier() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
@@ -30,11 +33,11 @@ class _LoginPageState extends State<LoginPage> {
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
       final cashierId = responseData['id'];
-      final cashierFullname = responseData['fullName']; // Ambil fullname dari respons API
+      final cashierFullname = responseData['fullName'];
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('cashierId', cashierId);
-      await prefs.setString('cashierName', cashierFullname); // Simpan fullname ke SharedPreferences
+      await prefs.setString('cashierName', cashierFullname);
 
       Navigator.pushReplacement(
         context,
@@ -42,149 +45,380 @@ class _LoginPageState extends State<LoginPage> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login gagal. Periksa email atau password.')),
+        const SnackBar(
+          content: Text('Login gagal. Periksa email atau password.'),
+        ),
       );
     }
   }
 
   @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final double maxBoxWidth = 350;
+    const backgroundColor = Color(0xFFF3F6FD); // mirip web
+    const textGrey = Color(0xFF6B7280);
+    const primaryGradientStart = Color(0xFF3B82F6);
+    const primaryGradientEnd = Color(0xFF4F46E5);
+
+    final double maxCardWidth = 420;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: backgroundColor,
       body: Center(
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Logo Header
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxBoxWidth),
-                child: Container(
-                  width: double.infinity,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1F4D7B),
-                    borderRadius: BorderRadius.circular(20),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxCardWidth),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 24,
+                    offset: const Offset(0, 16),
                   ),
-                  child: Center(
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // PANEL GRADASI (header, pengganti panel biru di web)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(32),
+                        topRight: Radius.circular(32),
+                      ),
+                      gradient: LinearGradient(
+                        colors: [primaryGradientStart, primaryGradientEnd],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset('assets/images/logo.png', height: 60),
-                        const SizedBox(height: 8),
+                        // pill "Yoomie Cashier"
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFFFBBF24),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Yoomie Cashier',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // logo
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  height: 32,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            const Expanded(
+                              child: Text(
+                                'Kontrol kasir Yoomie langsung dari aplikasi.',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
                         const Text(
-                          'Be Verified',
+                          'Akses transaksi dan kelola penjualan dari perangkat kasir dengan aman.',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontFamily: 'Courier',
-                            fontWeight: FontWeight.bold,
+                            color: Colors.white70,
+                            fontSize: 12.5,
+                            height: 1.5,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 24),
-
-              // Form Box
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxBoxWidth),
-                child: Container(
-                  padding: const EdgeInsets.all(24.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Welcome Back',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                  // FORM LOGIN
+                  Padding(
+                    padding:
+                    const EdgeInsets.fromLTRB(24, 24, 24, 20), // di dalam card
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Cashier Login',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Text("Not registered yet? "),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const RegisterPage()),
-                              );
-                            },
-                            child: const Text(
-                              "Sign up",
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Masuk dengan akun kasir Yoomie Anda.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: textGrey,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Text(
+                              'Not registered yet? ',
                               style: TextStyle(
-                                color: Colors.indigo,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                color: textGrey,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const RegisterPage(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                'Sign up',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: primaryGradientEnd,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        const Text(
+                          'Email',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            hintText: 'admin@tokoanda.com',
+                            hintStyle: const TextStyle(
+                              fontSize: 13,
+                              color: textGrey,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF3F4F6),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        const Text(
+                          'Password',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            hintText: 'Masukkan password',
+                            hintStyle: const TextStyle(
+                              fontSize: 13,
+                              color: textGrey,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF3F4F6),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              borderSide: BorderSide.none,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 20,
+                                color: textGrey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _rememberMe = value ?? false;
+                                    });
+                                  },
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const Text(
+                                  'Remember me',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: textGrey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                // TODO: aksi forgot password (kalau nanti ada)
+                              },
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                'Forgot password?',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: primaryGradientEnd,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Tombol gradasi
+                        GestureDetector(
+                          onTap: loginCashier,
+                          child: Container(
+                            width: double.infinity,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  primaryGradientStart,
+                                  primaryGradientEnd,
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryGradientStart.withOpacity(0.35),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Sign In',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: emailController,
-                        decoration: InputDecoration(
-                          hintText: 'Email',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: loginCashier,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1F4D7B),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                          child: const Text(
-                            'Sign In',
+
+                        const SizedBox(height: 18),
+
+                        const Center(
+                          child: Text(
+                            '© 2025 Yoomie. Secure store management.',
                             style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
+                              fontSize: 11.5,
+                              color: textGrey,
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
