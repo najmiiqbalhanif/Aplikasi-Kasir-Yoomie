@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'productPage.dart';
+// import 'productPage.dart'; // SUDAH TIDAK DIPAKAI
 import '../../services/homepageservice.dart';
 import '../../models/product.dart';
 
@@ -26,7 +26,8 @@ class _HomePageState extends State<HomePage> {
   // Fungsi baru untuk memuat nama pengguna dari SharedPreferences
   Future<void> _loadCashierName() async {
     final prefs = await SharedPreferences.getInstance();
-    final cashierName = prefs.getString('cashierName'); // Ambil nilai dari kunci 'cashierName'
+    final cashierName =
+        prefs.getString('cashierName'); // Ambil nilai dari kunci 'cashierName'
     if (cashierName != null && cashierName.isNotEmpty) {
       setState(() {
         _cashierName = cashierName;
@@ -58,8 +59,9 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "Selamat Datang, $_cashierName", // Gunakan nama pengguna yang dimuat di sini
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+          "Selamat Datang, $_cashierName",
+          style: const TextStyle(
+              fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
         ),
       ),
       body: SingleChildScrollView(
@@ -83,26 +85,31 @@ class _HomePageState extends State<HomePage> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _products.map((product) {
-                      return ProductCard(
-                        imageUrl: product.photoUrl,
-                        title: product.name,
-                        category: product.category,
-                        price: 'Rp ${product.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.',)}',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProductPage(id: product.id),
-                            ),
-                          );
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ),
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: _products.map((product) {
+                            return ProductCard(
+                              imageUrl: product.photoUrl,
+                              title: product.name,
+                              category: product.category,
+                              price:
+                                  'Rp ${product.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\\d{1,3})(?=(\\d{3})+(?!\\d))'), (match) => '${match[1]}.',)}',
+                              onTap: () {
+                                // DULU: buka ProductPage
+                                // Navigator.push(
+                                //   context,
+                                //   MaterialPageRoute(
+                                //     builder: (context) => ProductPage(id: product.id),
+                                //   ),
+                                // );
+
+                                // Sekarang tidak ada halaman Product Detail lagi.
+                                // Bisa diganti jadi tambah ke cart / snackbar dsb.
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
               ),
               const SizedBox(height: 24),
               const PromoCarousel(),
@@ -118,7 +125,8 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(30.0),
                         ),
                         side: const BorderSide(color: Colors.black),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                       ),
                       onPressed: () {
                         // Aksi saat tombol ditekan
@@ -163,7 +171,7 @@ class ProductCard extends StatelessWidget {
   final String title;
   final String category;
   final String price;
-  final VoidCallback onTap; // Tambahkan ini
+  final VoidCallback onTap;
 
   const ProductCard({
     super.key,
@@ -171,13 +179,13 @@ class ProductCard extends StatelessWidget {
     required this.title,
     required this.category,
     required this.price,
-    required this.onTap, // Tambahkan ini
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap, // Tambahkan ini
+      onTap: onTap,
       child: Container(
         width: 150,
         margin: const EdgeInsets.only(right: 16),
@@ -186,7 +194,7 @@ class ProductCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child:Image.network(
+              child: Image.network(
                 imageUrl,
                 width: 150,
                 height: 80,
@@ -274,7 +282,7 @@ class _PromoCarouselState extends State<PromoCarousel> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
                       color: Colors.black12,
                       blurRadius: 6,
@@ -324,7 +332,8 @@ class _PromoCarouselState extends State<PromoCarousel> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _currentPage == index ? Colors.black : Colors.grey[300],
+                color:
+                    _currentPage == index ? Colors.black : Colors.grey[300],
               ),
             );
           }),
@@ -344,7 +353,7 @@ class BigPromoBanner extends StatelessWidget {
       child: Stack(
         children: [
           Image.asset(
-            "assets/images/iklan.jpg", // Gambar iklan kamu
+            "assets/images/iklan.jpg",
             width: double.infinity,
             height: 300,
             fit: BoxFit.cover,
@@ -359,7 +368,8 @@ class BigPromoBanner extends StatelessWidget {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),

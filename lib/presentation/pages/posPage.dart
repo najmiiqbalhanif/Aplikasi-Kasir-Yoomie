@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/Product.dart';
 import '../../services/ProductService.dart';
-import 'productPage.dart';
 
 class PoSPage extends StatefulWidget {
   const PoSPage({super.key});
@@ -10,7 +9,8 @@ class PoSPage extends StatefulWidget {
   State<PoSPage> createState() => _PoSPageState();
 }
 
-class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
+class _PoSPageState extends State<PoSPage>
+    with SingleTickerProviderStateMixin {
   static const Color backgroundColor = Color(0xFFF3F6FD);
   static const Color primaryGradientStart = Color(0xFF3B82F6);
   static const Color primaryGradientEnd = Color(0xFF4F46E5);
@@ -19,8 +19,8 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
   late Future<List<Product>> _futureProducts;
   late TabController _tabController;
 
-  /// Pisahkan antara key (untuk backend) dan label (untuk tampilan).
-  /// Sesuaikan `key` ini dengan value `category` di database kamu ya.
+  /// key = value category di database
+  /// label = teks yang ditampilkan di UI
   final List<Map<String, String>> _categories = [
     {'key': 'makanan', 'label': 'Makanan'},
     {'key': 'minuman', 'label': 'Minuman'},
@@ -35,7 +35,8 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _futureProducts = ProductService().getProducts();
-    _tabController = TabController(length: _categories.length, vsync: this);
+    _tabController =
+        TabController(length: _categories.length, vsync: this);
   }
 
   @override
@@ -50,8 +51,9 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
       backgroundColor: backgroundColor,
       body: Column(
         children: [
-          // HEADER GRADIENT + TABBAR
           const SizedBox(height: 25),
+
+          // ================== HEADER ==================
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -69,6 +71,7 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Title + search icon
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -109,7 +112,8 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
                   ],
                 ),
                 const SizedBox(height: 14),
-                // Container Tab kategori (diratakan kiri-kanan)
+
+                // ================== TAB KATEGORI ==================
                 Container(
                   height: 40,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -120,19 +124,15 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
                   child: TabBar(
                     controller: _tabController,
                     isScrollable: false,
-                    dividerColor: Colors.transparent, // biar ga ada garis hitam
-
+                    dividerColor: Colors.transparent,
                     indicator: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(999),
                     ),
-
-                    // tambahkan horizontal kecil supaya indicator sedikit lebih lebar
                     indicatorPadding: const EdgeInsets.symmetric(
                       vertical: 4,
                       horizontal: 6,
                     ),
-
                     labelColor: primaryGradientEnd,
                     unselectedLabelColor: Colors.white,
                     labelStyle: const TextStyle(
@@ -142,35 +142,39 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
                     unselectedLabelStyle: const TextStyle(
                       fontSize: 12.5,
                     ),
-
-                    tabs: _categories.map(
+                    tabs: _categories
+                        .map(
                           (cat) => Tab(
-                        // ⬇⬇ ini yang bikin pill putih lebih lebar dari teks
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          child: Text(
-                            cat['label']!,
-                            textAlign: TextAlign.center,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 18),
+                              child: Text(
+                                cat['label']!,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ).toList(),
+                        )
+                        .toList(),
                   ),
                 ),
               ],
             ),
           ),
 
-          // ISI PRODUK
+          // ================== ISI PRODUK ==================
           Expanded(
             child: FutureBuilder<List<Product>>(
               future: _futureProducts,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                      child: Text('Error: ${snapshot.error}'));
                 }
 
                 final products = snapshot.data ?? [];
@@ -193,6 +197,7 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
     );
   }
 
+  // ================== GRID PRODUK RESPONSIF ==================
   Widget _buildProductGrid(List<Product> products) {
     if (products.isEmpty) {
       return const Center(
@@ -203,15 +208,36 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
       );
     }
 
+    final width = MediaQuery.of(context).size.width;
+
+    int crossAxisCount;
+    double childAspectRatio;
+
+    if (width >= 1000) {
+      // layar gede / web
+      crossAxisCount = 5;
+      childAspectRatio = 0.75;
+    } else if (width >= 700) {
+      // tablet
+      crossAxisCount = 4;
+      childAspectRatio = 0.75;
+    } else if (width >= 500) {
+      // HP lebar
+      crossAxisCount = 3;
+      childAspectRatio = 0.7;
+    } else {
+      // HP biasa
+      crossAxisCount = 2;
+      childAspectRatio = 0.7;
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        // >>> 5 PRODUK PER ROW <<<
-        crossAxisCount: 5,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        // tinggi tiap kartu (boleh kamu tweak kalau mau lebih pendek/panjang)
-        mainAxisExtent: 210,
+        childAspectRatio: childAspectRatio,
       ),
       itemCount: products.length,
       itemBuilder: (context, index) {
@@ -219,12 +245,7 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
         return ProductItem(
           product: product,
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ProductPage(id: product.id),
-              ),
-            );
+            // TODO: nanti bisa diarahkan ke detail / tambah ke cart
           },
         );
       },
@@ -232,6 +253,7 @@ class _PoSPageState extends State<PoSPage> with SingleTickerProviderStateMixin {
   }
 }
 
+// ================== KARTU PRODUK ==================
 class ProductItem extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
@@ -245,13 +267,35 @@ class ProductItem extends StatelessWidget {
   String _formatRupiah(double value) {
     final text = value.toStringAsFixed(0);
     final reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
-    final formatted = text.replaceAllMapped(reg, (match) => '${match[1]}.');
+    final formatted =
+        text.replaceAllMapped(reg, (match) => '${match[1]}.');
     return 'Rp $formatted';
+  }
+
+  String _resolveImageUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      print('IMAGE URL (FULL): $url');
+      return url;
+    }
+
+    if (url.contains('src/main/resources/static/')) {
+      url = url.split('src/main/resources/static/').last;
+    }
+
+    url = url.replaceAll('\\', '/');
+    url = url.replaceAll(' ', '%20');
+
+    if (!url.startsWith('/')) {
+      url = '/$url';
+    }
+
+    final fullUrl = 'http://10.0.2.2:8080$url';
+    print('IMAGE URL (POS): $fullUrl');
+    return fullUrl;
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color textGrey = Color(0xFF6B7280);
     const Color priceColor = Color(0xFF111827);
 
     return GestureDetector(
@@ -273,21 +317,24 @@ class ProductItem extends StatelessWidget {
           children: [
             // gambar produk
             ClipRRect(
-              borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20)),
               child: AspectRatio(
-                aspectRatio: 1, // supaya square-ish dan rapi untuk 5 kolom
+                aspectRatio: 1,
                 child: Image.network(
-                  product.photoUrl,
+                  _resolveImageUrl(product.photoUrl),
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                  const Center(child: Icon(Icons.broken_image)),
+                  errorBuilder:
+                      (context, error, stackTrace) =>
+                          const Center(
+                              child: Icon(Icons.broken_image)),
                 ),
               ),
             ),
             // teks
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              padding:
+                  const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -295,17 +342,17 @@ class ProductItem extends StatelessWidget {
                     product.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: 15,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     _formatRupiah(product.price),
                     style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                       color: priceColor,
                     ),
                   ),
