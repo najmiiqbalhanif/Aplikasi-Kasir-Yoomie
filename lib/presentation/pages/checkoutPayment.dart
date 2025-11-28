@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/CartItem.dart'; // Import CartItem
 import '../../models/cashier.dart';
 import '../mainLayout.dart'; // Import MainLayout
+import 'package:http/http.dart' as http; // <-- tambahkan ini
 
 String fullName = '';
 
@@ -27,9 +28,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   int _currentStep = 0;
   final _formKey = GlobalKey<FormState>();
 
-  TextEditingController _fullNameController = TextEditingController();
-  TextEditingController _emailController = TextEditingController();
-
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
   String? _selectedPaymentMethod = 'credit';
 
@@ -39,7 +39,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   List<String> pickupLocations = ['Bandung Store', 'Jakarta Store'];
   List<String> pickupTimes = ['10:00 AM', '1:00 PM', '4:00 PM'];
-  final checkoutService = CheckoutService(baseUrl: 'http://10.0.2.2:8080'); // **IMPORTANT:** Update your base URL
+
+  // Base URL backend
+  static const String _apiBaseUrl = 'http://10.0.2.2:8080';
+
+  final checkoutService =
+  CheckoutService(baseUrl: 'http://10.0.2.2:8080'); // base URL utk payment & cashier
 
   @override
   void initState() {
@@ -53,16 +58,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     if (cashierId != null) {
       try {
-        final Cashier cashier = await checkoutService.getCashierById(cashierId); // Fetch cashier data
+        final Cashier cashier =
+        await checkoutService.getCashierById(cashierId); // Fetch cashier data
         setState(() {
-          // Assume fullname from backend is "First Last"
           _fullNameController.text = cashier.fullName;
           _emailController.text = cashier.email;
-
         });
       } catch (e) {
         print('Error loading cashier data: $e');
-        // Optionally show a snackbar or error message
       }
     }
   }
@@ -74,6 +77,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.dispose();
   }
 
+  /// Panggil backend /api/cart/checkout untuk validasi stok & update stok.
+  /// Return true kalau sukses (stok cukup), false kalau gagal (stok kurang / error).
+  Future<bool> _checkoutCartOnServer(int cashierId) async {
+    final uri = Uri.parse('$_apiBaseUrl/api/cart/checkout?cashierId=$cashierId');
+
+    try {
+      final response = await http.post(uri);
+
+      if (response.statusCode == 200) {
+        // Sukses: stok cukup dan sudah dikurangi
+        return true;
+      } else {
+        // Gagal: backend kirim pesan error plain text
+        final message = response.body.isNotEmpty
+            ? response.body
+            : 'Failed to checkout cart. Please try again.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+        return false;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error connecting to server: $e')),
+      );
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,19 +114,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
         elevation: 1,
         title: Row(
           children: [
-            Text("AthleteZone",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                )),
-            Spacer(),
-            Icon(Icons.search, color: Colors.black),
-            SizedBox(width: 20),
-            Icon(Icons.shopping_cart_outlined, color: Colors.black),
-            SizedBox(width: 20),
+            const Text(
+              "AthleteZone",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const Spacer(),
+            const Icon(Icons.search, color: Colors.black),
+            const SizedBox(width: 20),
+            const Icon(Icons.shopping_cart_outlined, color: Colors.black),
+            const SizedBox(width: 20),
             IconButton(
-              icon: Icon(Icons.account_circle_outlined, color: Colors.black),
+              icon: const Icon(Icons.account_circle_outlined, color: Colors.black),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -108,7 +142,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       body: Stepper(
         currentStep: _currentStep,
         onStepContinue: () {
-          if (_currentStep == 0) { // Only validate form on step 0
+          if (_currentStep == 0) {
             if (_formKey.currentState!.validate()) {
               setState(() {
                 if (_currentStep < 2) _currentStep += 1;
@@ -117,7 +151,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           } else if (_currentStep < 2) {
             setState(() => _currentStep += 1);
           } else {
-
+            // Last step: submit ditangani di tombol "Submit Transaction"
           }
         },
         onStepCancel: () {
@@ -134,24 +168,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 if (!isLastStep)
                   ElevatedButton(
                     onPressed: details.onStepContinue,
-                    child: Text('Continue', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[900],
                     ),
+                    child: const Text(
+                      'Continue',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
-                if (!isLastStep) SizedBox(width: 20),
+                if (!isLastStep) const SizedBox(width: 20),
                 TextButton(
                   onPressed: details.onStepCancel,
                   child: Text('Back', style: TextStyle(color: Colors.blue[900])),
                 ),
-                // For the last step, the submit button is inside the step content
               ],
             ),
           );
         },
         steps: [
           Step(
-            title: Text("1. Delivery Options"),
+            title: const Text("1. Delivery Options"),
             content: Form(
               key: _formKey,
               child: Column(
@@ -166,18 +202,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             });
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isDelivery ? const Color(0xFF041761) : Colors.white,
-                            side: BorderSide(color: const Color(0xFF041761)),
+                            backgroundColor:
+                            isDelivery ? const Color(0xFF041761) : Colors.white,
+                            side: const BorderSide(color: Color(0xFF041761)),
                           ),
                           child: Text(
                             "Delivery",
                             style: TextStyle(
-                              color: isDelivery ? Colors.white : const Color(0xFF041761),
+                              color: isDelivery
+                                  ? Colors.white
+                                  : const Color(0xFF041761),
                             ),
                           ),
                         ),
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
@@ -186,50 +225,57 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             });
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: !isDelivery ? const Color(0xFF041761) : Colors.white,
-                            side: BorderSide(color: const Color(0xFF041761)),
+                            backgroundColor:
+                            !isDelivery ? const Color(0xFF041761) : Colors.white,
+                            side: const BorderSide(color: Color(0xFF041761)),
                           ),
                           child: Text(
                             "Pick Up",
                             style: TextStyle(
-                              color: !isDelivery ? Colors.white : const Color(0xFF041761),
+                              color: !isDelivery
+                                  ? Colors.white
+                                  : const Color(0xFF041761),
                             ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   if (isDelivery) ...[
                     TextFormField(
                       controller: _fullNameController,
-                      decoration: InputDecoration(labelText: "Full Name"),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-                      // onChanged is not needed if using controller and validation is done on continue
+                      decoration: const InputDecoration(labelText: "Full Name"),
+                      validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                     ),
                     TextFormField(
                       controller: _emailController,
-                      decoration: InputDecoration(labelText: "Email"),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      decoration: const InputDecoration(labelText: "Email"),
+                      validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                     ),
                   ] else ...[
                     DropdownButtonFormField<String>(
-                      decoration: InputDecoration(labelText: "Pickup Location"),
-                      value: selectedLocation, // Set initial value
+                      decoration: const InputDecoration(labelText: "Pickup Location"),
+                      value: selectedLocation,
                       items: pickupLocations.map((location) {
-                        return DropdownMenuItem(value: location, child: Text(location));
+                        return DropdownMenuItem(
+                            value: location, child: Text(location));
                       }).toList(),
                       onChanged: (value) => setState(() => selectedLocation = value),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                     ),
                     DropdownButtonFormField<String>(
-                      decoration: InputDecoration(labelText: "Pickup Time"),
-                      value: selectedTime, // Set initial value
+                      decoration: const InputDecoration(labelText: "Pickup Time"),
+                      value: selectedTime,
                       items: pickupTimes.map((time) {
                         return DropdownMenuItem(value: time, child: Text(time));
                       }).toList(),
                       onChanged: (value) => setState(() => selectedTime = value),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
                     ),
                   ],
                 ],
@@ -239,26 +285,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
             state: _currentStep == 0 ? StepState.editing : StepState.indexed,
           ),
           Step(
-            title: Text("2. Payment"),
+            title: const Text("2. Payment"),
             content: Column(
               children: [
                 RadioListTile(
-                  title: Text("Credit Card"),
+                  title: const Text("Credit Card"),
                   value: "credit",
                   groupValue: _selectedPaymentMethod,
-                  onChanged: (value) => setState(() => _selectedPaymentMethod = value.toString()),
+                  onChanged: (value) =>
+                      setState(() => _selectedPaymentMethod = value.toString()),
                 ),
                 RadioListTile(
-                  title: Text("PayPal"),
+                  title: const Text("PayPal"),
                   value: "paypal",
                   groupValue: _selectedPaymentMethod,
-                  onChanged: (value) => setState(() => _selectedPaymentMethod = value.toString()),
+                  onChanged: (value) =>
+                      setState(() => _selectedPaymentMethod = value.toString()),
                 ),
                 RadioListTile(
-                  title: Text("Cash on Delivery"),
+                  title: const Text("Cash on Delivery"),
                   value: "cod",
                   groupValue: _selectedPaymentMethod,
-                  onChanged: (value) => setState(() => _selectedPaymentMethod = value.toString()),
+                  onChanged: (value) =>
+                      setState(() => _selectedPaymentMethod = value.toString()),
                 ),
               ],
             ),
@@ -266,52 +315,56 @@ class _CheckoutPageState extends State<CheckoutPage> {
             state: _currentStep == 1 ? StepState.editing : StepState.indexed,
           ),
           Step(
-            title: Text("3. Transaction Review"),
+            title: const Text("3. Transaction Review"),
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Display Cart Items dynamically here
-                Text('Transaction Summary:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                SizedBox(height: 10),
-                // Using a Column and iterating through cartItems
-                // Consider using ListView.builder if the list can be very long and needs to scroll independently
-                // For a potentially shorter list within a Stepper, Column is fine.
-                ...widget.cartItems.map((item) => Card(
-                  elevation: 2,
-                  margin: EdgeInsets.symmetric(vertical: 5),
-                  child: Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        // Assuming your CartItem has a product object with photoUrl
-                        // If not, adjust `item.product.photoUrl` accordingly
-                        Image.network(item.product.photoUrl, width: 80, height: 80, fit: BoxFit.cover),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item.product.name, style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text('Qty: ${item.quantity}'),
-                              // Add other product details from CartItem as needed, e.g., size, color
-                              // Text('Size: ${item.product.size}'),
-                              // Text('Color: ${item.product.color}'),
-                              SizedBox(height: 5),
-                              Text(
-                                'Rp ${item.totalPrice.toStringAsFixed(0).replaceAllMapped(
-                                  RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                                      (match) => '${match[1]}.',
-                                )}',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ],
+                const Text(
+                  'Transaction Summary:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                const SizedBox(height: 10),
+                ...widget.cartItems.map(
+                      (item) => Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 5),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Image.network(
+                            item.product.photoUrl,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.product.name,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
+                                Text('Qty: ${item.quantity}'),
+                                const SizedBox(height: 5),
+                                Text(
+                                  'Rp ${item.totalPrice.toStringAsFixed(0).replaceAllMapped(
+                                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                        (match) => '${match[1]}.',
+                                  )}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                )).toList(), // Convert iterable to List of Widgets
-                Divider(),
+                ),
+                const Divider(),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
@@ -319,32 +372,48 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                           (match) => '${match[1]}.',
                     )}',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Center(
                   child: ElevatedButton(
                     onPressed: () async {
-                      // Final validation for pick-up fields if applicable
-                      if (!isDelivery && (selectedLocation == null || selectedTime == null)) {
+                      // Validasi pickup jika bukan delivery
+                      if (!isDelivery &&
+                          (selectedLocation == null || selectedTime == null)) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Please select pickup location and time.')),
+                          const SnackBar(
+                              content: Text(
+                                  'Please select pickup location and time.')),
                         );
                         return;
                       }
 
-                      // Retrieve cashier ID
-                      final prefs = await SharedPreferences.getInstance();
+                      // Ambil cashier ID
+                      final prefs =
+                      await SharedPreferences.getInstance();
                       final cashierId = prefs.getInt('cashierId');
 
                       if (cashierId == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Cashier not logged in.')),
+                          const SnackBar(
+                              content: Text('Cashier not logged in.')),
                         );
                         return;
                       }
 
+                      // STEP 1: Validasi stok & update stok di backend
+                      final stockOk =
+                      await _checkoutCartOnServer(cashierId);
+                      if (!stockOk) {
+                        // Kalau stok tidak cukup, stop di sini.
+                        // Pesan sudah ditampilkan dari _checkoutCartOnServer.
+                        return;
+                      }
+
+                      // STEP 2: Kirim data payment + items seperti sebelumnya
                       try {
                         final payment = PaymentDTO(
                           cashierId: cashierId,
@@ -352,43 +421,44 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           totalAmount: widget.totalPrice,
                         );
 
-                        final items = widget.cartItems.map((cartItem) => PaymentItemDTO(
-                          cashierId: cashierId,
-                          name: cartItem.product.name,
-                          quantity: cartItem.quantity,
-                          price: cartItem.product.price,
-                          subTotal: cartItem.totalPrice,
-                        )).toList();
+                        final items = widget.cartItems
+                            .map(
+                              (cartItem) => PaymentItemDTO(
+                            cashierId: cashierId,
+                            name: cartItem.product.name,
+                            quantity: cartItem.quantity,
+                            price: cartItem.product.price,
+                            subTotal: cartItem.totalPrice,
+                          ),
+                        )
+                            .toList();
 
                         print("Submitting checkout...");
-                        await checkoutService.submitCheckout(payment, items);
+                        await checkoutService.submitCheckout(
+                            payment, items);
                         print("Checkout submitted!");
 
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: Text("Transaction Confirmed"),
-                            content: Text("Thank you for your purchase!"),
+                            title: const Text("Transaction Confirmed"),
+                            content: const Text(
+                                "Thank you for your purchase!"),
                             actions: [
                               TextButton(
                                 onPressed: () {
-                                  Navigator.pop(context); // Tutup AlertDialog
-
-                                  // Ganti baris ini:
-                                  // Navigator.pushAndRemoveUntil(
-                                  //   context,
-                                  //   MaterialPageRoute(builder: (context) => TransactionsPage()),
-                                  //       (route) => false,
-                                  // );
-
-                                  // Dengan ini: Kembali ke MainLayout dan set indeks ke tab Transactions (indeks 2)
+                                  Navigator.pop(context); // close dialog
                                   Navigator.pushAndRemoveUntil(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 2)),
-                                        (Route<dynamic> route) => false, // Ini akan menghapus semua rute di bawah MainLayout
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                      const MainLayout(
+                                          initialIndex: 2),
+                                    ),
+                                        (Route<dynamic> route) => false,
                                   );
                                 },
-                                child: Text("OK"),
+                                child: const Text("OK"),
                               ),
                             ],
                           ),
@@ -396,16 +466,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       } catch (e) {
                         print('Checkout submission failed: $e');
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to submit transaction: $e')),
+                          SnackBar(
+                              content: Text(
+                                  'Failed to submit transaction: $e')),
                         );
                       }
-
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF041761),
-                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 12),
                     ),
-                    child: Text("Submit Transaction", style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      "Submit Transaction",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ],
