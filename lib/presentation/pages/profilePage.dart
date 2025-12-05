@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../services/CashierService.dart';
+import '../../services/authService.dart';
 import '../../models/cashier.dart';
 import 'editProfilePage.dart';
 import 'FavoriteProductsPage.dart';
+import 'login.dart'; // SESUAIKAN jika path berbeda
 
 // === THEME CONST BIAR KONSISTEN DENGAN LOGIN / REGISTER / POS ===
 const Color kBackgroundColor = Color(0xFFF3F6FD);
@@ -44,12 +46,54 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // === KONFIRMASI + LOGOUT ===
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text(
+            'Apakah Anda yakin ingin keluar dari akun kasir Yoomie?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true) return;
+
+    // Panggil service logout (clear SharedPreferences + hit API /logout)
+    await AuthService.logout();
+
+    if (!mounted) return;
+
+    // Arahkan ke LoginPage dan hapus semua route sebelumnya
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackgroundColor,
       body: SafeArea(
-        child: isLoading
+        child: isLoading || cashier == null
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
           padding:
@@ -64,6 +108,8 @@ class _ProfilePageState extends State<ProfilePage> {
               _buildAccountInfoCard(),
               const SizedBox(height: 16),
               _buildTipsCard(),
+              const SizedBox(height: 24),
+              _buildLogoutButton(),
               const SizedBox(height: 8),
             ],
           ),
@@ -277,7 +323,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // === WIDGET: CARD TIPS / INFO (PENGGANTI LISTTILE NIKExD) ===
+  // === WIDGET: CARD TIPS / INFO ===
   Widget _buildTipsCard() {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
@@ -323,9 +369,45 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+
+  // === WIDGET: TOMBOL LOGOUT ===
+  Widget _buildLogoutButton() {
+    return GestureDetector(
+      onTap: _confirmLogout,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: const LinearGradient(
+            colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: kPrimaryGradientStart.withOpacity(0.28),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Text(
+            'Logout',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-// === QUICK ACTION ITEM (ICON + LABEL) DENGAN STYLE BARU ===
+// === QUICK ACTION ITEM (ICON + LABEL) ===
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -354,21 +436,10 @@ class _MenuItem extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Center(
-              child: Icon(
-                Icons.circle, // akan diganti via IconTheme
-                color: Colors.white,
-              ),
-            ),
-          ),
-          // Trik kecil: gunakan IconTheme untuk mengganti ikon di atas
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Icon(
-                icon,
-                size: 22,
-                color: Colors.white,
-              ),
+            child: Icon(
+              icon,
+              size: 22,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 6),
