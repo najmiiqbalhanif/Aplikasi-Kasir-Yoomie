@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+
+import 'package:helloworld/presentation/pages/cartProvider.dart';
+import 'package:provider/provider.dart';
+
 import '../../models/Product.dart';
+import '../../models/CartItem.dart';
 import '../../services/ProductService.dart';
 import '../../services/cartService.dart';
 
 class PoSPage extends StatefulWidget {
-  final int cashierId; // <- id kasir aktif
+  final int cashierId; // id kasir aktif
 
   const PoSPage({
     super.key,
@@ -46,9 +51,6 @@ class _PoSPageState extends State<PoSPage>
   bool _isSearching = false;
   List<Product> _allProducts = [];
 
-  /// key = product.id, value = quantity di cart
-  final Map<int, int> _cartQuantities = {};
-
   @override
   void initState() {
     super.initState();
@@ -56,8 +58,8 @@ class _PoSPageState extends State<PoSPage>
     _tabController =
         TabController(length: _categories.length, vsync: this);
 
-    // Kalau nanti mau load qty awal dari backend, bisa pakai getCartItems di sini.
-    // Untuk sekarang, kita mulai dari cart kosong di sisi app.
+    // Load isi cart dari backend -> masuk ke CartProvider
+    _loadInitialCartFromServer();
   }
 
   @override
@@ -65,6 +67,41 @@ class _PoSPageState extends State<PoSPage>
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Ambil data cart awal dari backend, isi ke CartProvider
+  Future<void> _loadInitialCartFromServer() async {
+    try {
+      final cartProvider =
+      Provider.of<CartProvider>(context, listen: false);
+
+      // Kalau provider sudah terisi (misal sudah di-load dari halaman lain), jangan timpa.
+      if (cartProvider.items.isNotEmpty) return;
+
+      final List<CartItem> initialCartItems =
+      await _cartService.getCartItems(widget.cashierId);
+
+      if (!mounted) return;
+
+      // Cek lagi setelah network (jaga-jaga kalau sudah ada perubahan)
+      if (cartProvider.items.isNotEmpty) return;
+
+      cartProvider.clearCart();
+
+      for (final item in initialCartItems) {
+        cartProvider.addExistingItem(item.product, item.quantity);
+      }
+
+      // Rebuild PoSPage supaya Qty pada kartu ikut keisi
+      setState(() {});
+    } catch (e) {
+      debugPrint('Error load initial cart in PoSPage: $e');
+      if (!mounted) return;
+      // Optional: tampilkan snackbar kalau mau
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Gagal memuat keranjang: $e')),
+      // );
+    }
   }
 
   bool _matchesQuery(Product p, String query) {
@@ -100,6 +137,19 @@ class _PoSPageState extends State<PoSPage>
     }
   }
 
+  /// Ambil qty terkini untuk sebuah product dari CartProvider
+  int _getCurrentQtyFromProvider(Product product) {
+    if (product.id == null) return 0;
+    final cartProvider =
+    Provider.of<CartProvider>(context, listen: false);
+    final productId = product.id!;
+
+    final matched = cartProvider.items
+        .where((item) => item.product.id == productId);
+    if (matched.isEmpty) return 0;
+    return matched.first.quantity;
+  }
+
   /// Tap pada kartu produk:
   /// - Kalau belum ada di cart => qty = 1
   /// - Kalau sudah ada        => qty + 1
@@ -109,14 +159,13 @@ class _PoSPageState extends State<PoSPage>
       return;
     }
 
-    final productId = product.id!;
-    final currentQty = _cartQuantities[productId] ?? 0;
+    final currentQty = _getCurrentQtyFromProvider(product);
     final newQty = currentQty + 1;
 
     _updateCartQuantity(product, newQty);
   }
 
-  /// Update qty di state + sinkron ke backend via CartService.
+  /// Update qty di CartProvider + sinkron ke backend via CartService.
   Future<void> _updateCartQuantity(Product product, int newQuantity) async {
     if (product.id == null) {
       debugPrint('Product id null, skip updateCartQuantity');
@@ -125,20 +174,32 @@ class _PoSPageState extends State<PoSPage>
 
     final int productId = product.id!;
     final int cashierId = widget.cashierId;
-    final int previousQty = _cartQuantities[productId] ?? 0;
 
-    // Update UI dulu biar kerasa real-time
-    setState(() {
-      if (newQuantity <= 0) {
-        _cartQuantities.remove(productId);
-      } else {
-        _cartQuantities[productId] = newQuantity;
-      }
-    });
+    final cartProvider =
+    Provider.of<CartProvider>(context, listen: false);
+
+    final int previousQty = _getCurrentQtyFromProvider(product);
+
+    // ====== Optimistic update: update provider dulu ======
+    if (newQuantity <= 0) {
+      // hapus item
+      cartProvider.removeItem(product);
+    } else if (previousQty == 0) {
+      // item baru
+      cartProvider.addExistingItem(product, newQuantity);
+    } else {
+      // update qty existing
+      cartProvider.updateQuantity(product, newQuantity);
+    }
+
+    // supaya PoSPage rebuild juga (walau sebenarnya provider sudah notify)
+    if (mounted) {
+      setState(() {});
+    }
 
     try {
+      // ====== Sinkron ke backend ======
       if (newQuantity <= 0) {
-        // Qty 0 => hapus item
         if (previousQty > 0) {
           await _cartService.removeProductFromCart(cashierId, productId);
         }
@@ -157,8 +218,8 @@ class _PoSPageState extends State<PoSPage>
         return;
       }
 
-      // Selain kasus di atas (misalnya loncat dari 1 -> 5),
-      // langsung pakai endpoint updateQuantity.
+      // Selain kasus di atas (misalnya loncat 1 -> 5),
+      // pakai endpoint updateQuantity
       await _cartService.updateProductQuantity(
         cashierId,
         productId,
@@ -169,14 +230,14 @@ class _PoSPageState extends State<PoSPage>
 
       if (!mounted) return;
 
-      // Rollback ke qty sebelumnya kalau gagal
-      setState(() {
-        if (previousQty == 0) {
-          _cartQuantities.remove(productId);
-        } else {
-          _cartQuantities[productId] = previousQty;
-        }
-      });
+      // ==== Rollback provider ke nilai sebelumnya ====
+      if (previousQty <= 0) {
+        cartProvider.removeItem(product);
+      } else {
+        cartProvider.updateQuantity(product, previousQty);
+      }
+
+      setState(() {});
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -186,17 +247,17 @@ class _PoSPageState extends State<PoSPage>
     }
   }
 
-  /// Bottom sheet 1/4 layar untuk atur qty
+  /// Bottom sheet qty (Cupertino style)
   void _showQuantityBottomSheet(Product product) {
     if (product.id == null) {
       debugPrint('Product id null, tidak bisa show bottom sheet qty');
       return;
     }
 
-    final int productId = product.id!;
-    final int currentQty = _cartQuantities[productId] ?? 1;
+    final existingQty = _getCurrentQtyFromProvider(product);
+    final int currentQty = existingQty == 0 ? 1 : existingQty;
 
-    const int maxQty = 50; // batas atas qty di picker, bisa kamu ubah
+    const int maxQty = 50; // batas atas qty di picker
 
     showModalBottomSheet(
       context: context,
@@ -218,8 +279,8 @@ class _PoSPageState extends State<PoSPage>
             final height = MediaQuery.of(ctx).size.height;
 
             return SizedBox(
-              height: height * 0.45,   // kira-kira hampir setengah layar
-              width: double.infinity,  // full lebar
+              height: height * 0.45,
+              width: double.infinity,
               child: Column(
                 children: [
                   const SizedBox(height: 8),
@@ -353,7 +414,6 @@ class _PoSPageState extends State<PoSPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title + search / searchField
                 _isSearching ? _buildSearchRow() : _buildTitleRow(),
                 const SizedBox(height: 14),
 
@@ -422,19 +482,17 @@ class _PoSPageState extends State<PoSPage>
                 }
 
                 final products = snapshot.data ?? [];
-                _allProducts = products; // simpan untuk kebutuhan search
+                _allProducts = products;
 
                 return TabBarView(
                   controller: _tabController,
                   children: _categories.map((category) {
                     final key = category['key']!;
 
-                    // Filter per kategori dulu
                     final inCategory = products
                         .where((p) => p.category == key)
                         .toList();
 
-                    // Kalau ada searchQuery, filter lagi berdasarkan query
                     final displayProducts = _searchQuery.isEmpty
                         ? inCategory
                         : inCategory
@@ -578,21 +636,26 @@ class _PoSPageState extends State<PoSPage>
     double childAspectRatio;
 
     if (width >= 1000) {
-      // layar gede / web
       crossAxisCount = 5;
       childAspectRatio = 0.75;
     } else if (width >= 700) {
-      // tablet
       crossAxisCount = 4;
       childAspectRatio = 0.75;
     } else if (width >= 500) {
-      // HP lebar
       crossAxisCount = 3;
       childAspectRatio = 0.7;
     } else {
-      // HP biasa
       crossAxisCount = 2;
       childAspectRatio = 0.7;
+    }
+
+    // Ambil state cart dari provider (listen: true supaya realtime)
+    final cartProvider = Provider.of<CartProvider>(context);
+    final Map<int, int> quantityMap = {};
+    for (final item in cartProvider.items) {
+      if (item.product.id != null) {
+        quantityMap[item.product.id!] = item.quantity;
+      }
     }
 
     return GridView.builder(
@@ -606,9 +669,9 @@ class _PoSPageState extends State<PoSPage>
       itemCount: products.length,
       itemBuilder: (context, index) {
         final product = products[index];
-        final qty = product.id == null
+        final qty = (product.id == null)
             ? 0
-            : (_cartQuantities[product.id!] ?? 0);
+            : (quantityMap[product.id!] ?? 0);
 
         return ProductItem(
           product: product,
@@ -646,13 +709,12 @@ class ProductItem extends StatelessWidget {
 
   String _resolveImageUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      // ignore: avoid_print
       print('IMAGE URL (FULL): $url');
       return url;
     }
 
-    if (url.contains('src/main/resources/static/')) {
-      url = url.split('src/main/resources/static/').last;
+    if (url.contains('src/main/resources/static/storage')) {
+      url = url.split('src/main/resources/static/storage').last;
     }
 
     url = url.replaceAll('\\', '/');
@@ -663,7 +725,6 @@ class ProductItem extends StatelessWidget {
     }
 
     final fullUrl = 'http://10.0.2.2:8080$url';
-    // ignore: avoid_print
     print('IMAGE URL (POS): $fullUrl');
     return fullUrl;
   }
@@ -690,7 +751,6 @@ class ProductItem extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // gambar produk
             ClipRRect(
               borderRadius:
               const BorderRadius.vertical(top: Radius.circular(20)),
@@ -705,7 +765,6 @@ class ProductItem extends StatelessWidget {
                 ),
               ),
             ),
-            // teks
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
