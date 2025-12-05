@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // NEW
 import '../models/cashier.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://10.0.2.2:8080/api/auth'; // ganti sesuai IP
+  static const String baseUrl = 'http://10.0.2.2:8080/api/auth';
 
   Future<bool> register(Cashier cashier) async {
     final url = Uri.parse('$baseUrl/register');
@@ -39,5 +40,24 @@ class AuthService {
       print("Login failed: ${response.body}");
       return null;
     }
+  }
+
+  // NEW: logout
+  static Future<void> logout() async {
+    try {
+      final url = Uri.parse('$baseUrl/logout');
+      await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+      );
+    } catch (e) {
+      // kalau API error, tetap lanjut clear local session
+      print('Logout API error: $e');
+    }
+
+    // bersihkan sesi lokal
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('cashierId');
+    await prefs.remove('cashierName');
   }
 }
