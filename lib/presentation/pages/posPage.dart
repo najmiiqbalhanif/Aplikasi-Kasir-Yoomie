@@ -31,6 +31,12 @@ class _PoSPageState extends State<PoSPage>
     {'key': 'alat_tulis', 'label': 'Alat Tulis'},
   ];
 
+  // ===== STATE UNTUK SEARCH =====
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isSearching = false;
+  List<Product> _allProducts = [];
+
   @override
   void initState() {
     super.initState();
@@ -42,7 +48,41 @@ class _PoSPageState extends State<PoSPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  bool _matchesQuery(Product p, String query) {
+    final q = query.toLowerCase();
+    return p.name.toLowerCase().contains(q) ||
+        p.brand.toLowerCase().contains(q);
+  }
+
+  void _onSearchChanged(String value) {
+    final query = value.trim().toLowerCase();
+
+    setState(() {
+      _searchQuery = query;
+    });
+
+    if (query.isEmpty || _allProducts.isEmpty) return;
+
+    // Cari produk pertama yang cocok di SEMUA kategori
+    Product? firstMatch;
+    for (final p in _allProducts) {
+      if (_matchesQuery(p, query)) {
+        firstMatch = p;
+        break;
+      }
+    }
+
+    if (firstMatch != null) {
+      final idx =
+      _categories.indexWhere((c) => c['key'] == firstMatch!.category);
+      if (idx != -1) {
+        _tabController.animateTo(idx);
+      }
+    }
   }
 
   @override
@@ -71,46 +111,8 @@ class _PoSPageState extends State<PoSPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title + search icon
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Point of Sale',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Pilih produk dan tambahkan ke keranjang.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      height: 36,
-                      width: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.18),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.search,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ],
-                ),
+                // Title + search / searchField
+                _isSearching ? _buildSearchRow() : _buildTitleRow(),
                 const SizedBox(height: 14),
 
                 // ================== TAB KATEGORI ==================
@@ -145,16 +147,16 @@ class _PoSPageState extends State<PoSPage>
                     tabs: _categories
                         .map(
                           (cat) => Tab(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18),
-                              child: Text(
-                                cat['label']!,
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18),
+                          child: Text(
+                            cat['label']!,
+                            textAlign: TextAlign.center,
                           ),
-                        )
+                        ),
+                      ),
+                    )
                         .toList(),
                   ),
                 ),
@@ -178,15 +180,26 @@ class _PoSPageState extends State<PoSPage>
                 }
 
                 final products = snapshot.data ?? [];
+                _allProducts = products; // simpan untuk kebutuhan search
 
                 return TabBarView(
                   controller: _tabController,
                   children: _categories.map((category) {
                     final key = category['key']!;
-                    final filtered = products
+
+                    // Filter per kategori dulu
+                    final inCategory = products
                         .where((p) => p.category == key)
                         .toList();
-                    return _buildProductGrid(filtered);
+
+                    // Kalau ada searchQuery, filter lagi berdasarkan query
+                    final displayProducts = _searchQuery.isEmpty
+                        ? inCategory
+                        : inCategory
+                        .where((p) => _matchesQuery(p, _searchQuery))
+                        .toList();
+
+                    return _buildProductGrid(displayProducts);
                   }).toList(),
                 );
               },
@@ -197,13 +210,122 @@ class _PoSPageState extends State<PoSPage>
     );
   }
 
+  // ================== HEADER ROWS ==================
+
+  Widget _buildTitleRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Point of Sale',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Pilih produk dan tambahkan ke keranjang.',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        Container(
+          height: 36,
+          width: 36,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.18),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.search,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () {
+              setState(() {
+                _isSearching = true;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Center(
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: _onSearchChanged,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 18,
+                    color: primaryGradientEnd,
+                  ),
+                  hintText: 'Cari produk...',
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: textGrey,
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(
+            Icons.close_rounded,
+            color: Colors.white,
+          ),
+          onPressed: () {
+            setState(() {
+              _isSearching = false;
+              _searchQuery = '';
+              _searchController.clear();
+            });
+          },
+        ),
+      ],
+    );
+  }
+
   // ================== GRID PRODUK RESPONSIF ==================
   Widget _buildProductGrid(List<Product> products) {
     if (products.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Belum ada produk di kategori ini.',
-          style: TextStyle(color: textGrey),
+          _searchQuery.isEmpty
+              ? 'Belum ada produk di kategori ini.'
+              : 'Tidak ada produk yang cocok dengan pencarian.',
+          style: const TextStyle(color: textGrey),
         ),
       );
     }
@@ -268,12 +390,13 @@ class ProductItem extends StatelessWidget {
     final text = value.toStringAsFixed(0);
     final reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
     final formatted =
-        text.replaceAllMapped(reg, (match) => '${match[1]}.');
+    text.replaceAllMapped(reg, (match) => '${match[1]}.');
     return 'Rp $formatted';
   }
 
   String _resolveImageUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
+      // ignore: avoid_print
       print('IMAGE URL (FULL): $url');
       return url;
     }
@@ -290,6 +413,7 @@ class ProductItem extends StatelessWidget {
     }
 
     final fullUrl = 'http://10.0.2.2:8080$url';
+    // ignore: avoid_print
     print('IMAGE URL (POS): $fullUrl');
     return fullUrl;
   }
@@ -326,15 +450,15 @@ class ProductItem extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder:
                       (context, error, stackTrace) =>
-                          const Center(
-                              child: Icon(Icons.broken_image)),
+                  const Center(
+                      child: Icon(Icons.broken_image)),
                 ),
               ),
             ),
             // teks
             Padding(
               padding:
-                  const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
