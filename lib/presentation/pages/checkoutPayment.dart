@@ -442,8 +442,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text("Transaction Confirmed"),
-                            content: const Text(
-                                "Thank you for your purchase!"),
+                            content: const Text("Thank you for your purchase!"),
                             actions: [
                               TextButton(
                                 onPressed: () {
@@ -451,9 +450,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   Navigator.pushAndRemoveUntil(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                      const MainLayout(
-                                          initialIndex: 2),
+                                      builder: (context) => MainLayout(   // <-- HAPUS const
+                                        initialIndex: 2,
+                                        cashierId: cashierId,             // <-- KIRIM cashierId yang barusan dipakai checkout
+                                      ),
                                     ),
                                         (Route<dynamic> route) => false,
                                   );

@@ -32,8 +32,10 @@ class _LoginPageState extends State<LoginPage> {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      final cashierId = responseData['id'];
-      final cashierFullname = responseData['fullName'];
+
+      // pastikan tipenya int
+      final int cashierId = responseData['id'];
+      final String cashierFullname = responseData['fullName'];
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('cashierId', cashierId);
@@ -41,7 +43,11 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainLayout()),
+        MaterialPageRoute(
+          builder: (_) => MainLayout(
+            cashierId: cashierId,
+          ),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
