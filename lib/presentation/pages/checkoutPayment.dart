@@ -115,7 +115,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         title: Row(
           children: [
             const Text(
-              "AthleteZone",
+              "AtheleteZone",
               style: TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.bold,

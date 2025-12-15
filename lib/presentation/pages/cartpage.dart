@@ -377,57 +377,140 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  // ==== BOTTOM SHEET QTY PICKER (TIDAK DIUBAH BANYAK, SUDAH BAGUS) ====
+  // ==== BOTTOM SHEET QTY PICKER (STYLE PERSIS SEPERTI CONTOH KAMU) ====
   Future<int?> _showQuantityPicker(
       BuildContext context,
       int currentQuantity,
       int maxQty,
       ) async {
-    final double itemHeight = 50;
+    final double itemHeight = 46;
 
-    if (maxQty <= 0) maxQty = currentQuantity; // biar minimal masih bisa lihat qty saat ini
-
+    if (maxQty <= 0) maxQty = currentQuantity;
     final initial = (currentQuantity > maxQty) ? maxQty : currentQuantity;
 
     final FixedExtentScrollController scrollController =
-    FixedExtentScrollController(initialItem: initial - 1);
+    FixedExtentScrollController(initialItem: (initial - 1).clamp(0, maxQty - 1));
 
     int selectedQuantity = initial;
 
     return await showModalBottomSheet<int>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (BuildContext context) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      builder: (BuildContext ctx) {
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setStateInner) {
+          builder: (BuildContext ctx, StateSetter setStateInner) {
+            final height = MediaQuery.of(ctx).size.height;
+
             return Container(
-              height: MediaQuery.of(context).size.height * 0.45,
-              padding: const EdgeInsets.all(16.0),
+              width: double.infinity,
+              height: height * 0.60,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color(0xFF3B82F6), // biru kiri
+                    Color(0xFF4F46E5), // ungu kanan
+                  ],
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 22,
+                    spreadRadius: 2,
+                    offset: const Offset(0, -6),
+                  ),
+                ],
+              ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
+                  const SizedBox(height: 10),
+
+                  // handle
                   Container(
-                    width: 40,
+                    width: 52,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2.5),
+                      color: Colors.white.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    title: Text(
-                      "Hapus dari keranjang",
-                      style: TextStyle(color: Colors.red[700], fontSize: 16),
-                      textAlign: TextAlign.center,
+
+                  const SizedBox(height: 14),
+
+                  // Row: Hapus dari keranjang + tombol X di kanan
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(50),
+                            onTap: () => Navigator.pop(ctx, 0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.16),
+                                borderRadius: BorderRadius.circular(50),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.25),
+                                ),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.red, // merah
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Hapus dari keranjang',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () => Navigator.of(ctx).pop(),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.25),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    onTap: () {
-                      Navigator.pop(context, 0);
-                    },
                   ),
-                  const Divider(),
+
+
+                  // Picker qty (ListWheel) + highlight glass putih
                   Expanded(
                     child: Stack(
                       alignment: Alignment.center,
@@ -437,9 +520,13 @@ class _CartPageState extends State<CartPage> {
                             alignment: Alignment.center,
                             child: Container(
                               height: itemHeight,
+                              margin: const EdgeInsets.symmetric(horizontal: 24),
                               decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white.withOpacity(0.18), // glass
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0),
+                                ),
                               ),
                             ),
                           ),
@@ -448,55 +535,65 @@ class _CartPageState extends State<CartPage> {
                           controller: scrollController,
                           itemExtent: itemHeight,
                           perspective: 0.003,
-                          diameterRatio: 1.5,
+                          diameterRatio: 1.6,
+                          magnification: 1.10,
+                          useMagnifier: true,
+                          squeeze: 1.05,
                           physics: const FixedExtentScrollPhysics(),
                           onSelectedItemChanged: (index) {
-                            setStateInner(() {
-                              selectedQuantity = index + 1;
-                            });
+                            setStateInner(() => selectedQuantity = index + 1);
                           },
                           childDelegate: ListWheelChildBuilderDelegate(
+                            childCount: maxQty,
                             builder: (BuildContext context, int index) {
-                              final int qty = index + 1;
-                              final bool isSelected = (qty == selectedQuantity);
+                              final qty = index + 1;
+                              final isSelected = qty == selectedQuantity;
 
                               return Center(
-                                child: Text(
-                                  '$qty',
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 120),
                                   style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight:
-                                    isSelected ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: isSelected ? 26 : 18,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w500,
                                     color: isSelected
-                                        ? kPrimaryGradientEnd
-                                        : Colors.grey[700],
+                                        ? Colors.white
+                                        : Colors.white.withOpacity(0.65),
                                   ),
+                                  child: Text('$qty'),
                                 ),
                               );
                             },
-                            childCount: maxQty, // <-- pakai stok
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context, selectedQuantity);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF041761),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+
+                  // tombol selesai
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, selectedQuantity),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF0B3B8F),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        'Selesai',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+                        child: const Text(
+                          'Selesai',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -508,6 +605,8 @@ class _CartPageState extends State<CartPage> {
       },
     );
   }
+
+
 
   // ==== ITEM CART BARU DENGAN CARD & LAYOUT LEBIH RAPI ====
   Widget _buildCartItem(BuildContext context, CartItem cartItem, int cashierId) {
