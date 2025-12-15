@@ -154,19 +154,44 @@ class _PoSPageState extends State<PoSPage>
   /// - Kalau belum ada di cart => qty = 1
   /// - Kalau sudah ada        => qty + 1
   void _onProductTap(Product product) {
-    if (product.id == null) {
-      debugPrint('Product id null, tidak bisa menambah ke cart');
+    if (product.id == null) return;
+
+    final currentQty = _getCurrentQtyFromProvider(product);
+    final maxQty = product.stock;
+
+    if (maxQty <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Stok habis.')),
+      );
       return;
     }
 
-    final currentQty = _getCurrentQtyFromProvider(product);
-    final newQty = currentQty + 1;
+    if (currentQty >= maxQty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maksimal qty untuk produk ini adalah $maxQty.')),
+      );
+      return;
+    }
 
-    _updateCartQuantity(product, newQty);
+    _updateCartQuantity(product, currentQty + 1);
   }
 
   /// Update qty di CartProvider + sinkron ke backend via CartService.
   Future<void> _updateCartQuantity(Product product, int newQuantity) async {
+    final maxQty = product.stock;
+    if (maxQty <= 0 && newQuantity > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Stok habis.')),
+      );
+      return;
+    }
+    if (newQuantity > maxQty) {
+      newQuantity = maxQty;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Qty disesuaikan ke stok maksimal: $maxQty.')),
+      );
+    }
+
     if (product.id == null) {
       debugPrint('Product id null, skip updateCartQuantity');
       return;
@@ -254,10 +279,18 @@ class _PoSPageState extends State<PoSPage>
       return;
     }
 
-    final existingQty = _getCurrentQtyFromProvider(product);
-    final int currentQty = existingQty == 0 ? 1 : existingQty;
+    final int maxQty = product.stock; // <-- dari DB
 
-    const int maxQty = 50; // batas atas qty di picker
+    if (maxQty <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Stok habis.')),
+      );
+      return;
+    }
+
+    final existingQty = _getCurrentQtyFromProvider(product);
+    int currentQty = existingQty == 0 ? 1 : existingQty;
+    if (currentQty > maxQty) currentQty = maxQty;
 
     showModalBottomSheet(
       context: context,

@@ -378,12 +378,21 @@ class _CartPageState extends State<CartPage> {
   }
 
   // ==== BOTTOM SHEET QTY PICKER (TIDAK DIUBAH BANYAK, SUDAH BAGUS) ====
-  Future<int?> _showQuantityPicker(BuildContext context, int currentQuantity) async {
+  Future<int?> _showQuantityPicker(
+      BuildContext context,
+      int currentQuantity,
+      int maxQty,
+      ) async {
     final double itemHeight = 50;
 
+    if (maxQty <= 0) maxQty = currentQuantity; // biar minimal masih bisa lihat qty saat ini
+
+    final initial = (currentQuantity > maxQty) ? maxQty : currentQuantity;
+
     final FixedExtentScrollController scrollController =
-    FixedExtentScrollController(initialItem: currentQuantity - 1);
-    int selectedQuantity = currentQuantity;
+    FixedExtentScrollController(initialItem: initial - 1);
+
+    int selectedQuantity = initial;
 
     return await showModalBottomSheet<int>(
       context: context,
@@ -465,7 +474,7 @@ class _CartPageState extends State<CartPage> {
                                 ),
                               );
                             },
-                            childCount: 10,
+                            childCount: maxQty, // <-- pakai stok
                           ),
                         ),
                       ],
@@ -567,10 +576,19 @@ class _CartPageState extends State<CartPage> {
                   children: [
                     GestureDetector(
                       onTap: () async {
+                        final int maxQty = cartItem.product.stock;
+
                         final int? selectedQuantity =
-                        await _showQuantityPicker(context, cartItem.quantity);
+                        await _showQuantityPicker(context, cartItem.quantity, maxQty);
 
                         if (selectedQuantity != null) {
+                          if (selectedQuantity > maxQty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Maksimal qty produk ini adalah $maxQty.')),
+                            );
+                            return;
+                          }
+
                           if (selectedQuantity == 0) {
                             try {
                               await _cartService.removeProductFromCart(
