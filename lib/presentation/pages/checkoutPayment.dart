@@ -3,12 +3,12 @@ import 'package:helloworld/presentation/pages/profilePage.dart';
 import '../../models/Payment.dart';
 import '../../services/CheckoutService.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/CartItem.dart'; // Import CartItem
+import '../../models/CartItem.dart';
 import '../../models/cashier.dart';
-import '../mainLayout.dart'; // Import MainLayout
-import 'package:http/http.dart' as http; // <-- tambahkan ini
-
-String fullName = '';
+import '../mainLayout.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -21,50 +21,58 @@ class CheckoutPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _CheckoutPageState createState() => _CheckoutPageState();
+  State<CheckoutPage> createState() => _CheckoutPageState();
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-  int _currentStep = 0;
-  final _formKey = GlobalKey<FormState>();
-
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
-  String? _selectedPaymentMethod = 'credit';
+  // CASH input
+  final TextEditingController _cashPaidController = TextEditingController();
 
-  bool isDelivery = true;
-  String? selectedLocation;
-  String? selectedTime;
+  // Transfer note (optional)
+  final TextEditingController _transferNoteController = TextEditingController();
 
-  List<String> pickupLocations = ['Bandung Store', 'Jakarta Store'];
-  List<String> pickupTimes = ['10:00 AM', '1:00 PM', '4:00 PM'];
+  // Metode pembayaran:
+  // "cash" | "mandiri" | "bca"
+  String _selectedPaymentMethod = 'cash';
 
-  // Base URL backend
   static const String _apiBaseUrl = 'http://10.0.2.2:8080';
+  final checkoutService = CheckoutService(baseUrl: _apiBaseUrl);
 
-  final checkoutService =
-  CheckoutService(baseUrl: 'http://10.0.2.2:8080'); // base URL utk payment & cashier
+  final NumberFormat _rupiah = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp. ',
+    decimalDigits: 0,
+  );
+
+  int _selectedCashPreset = 0; // nilai preset cash yang dipilih (0 = none/custom)
 
   @override
   void initState() {
     super.initState();
     _loadCashierData();
+
+    // Default: preset = total (seperti di foto tombol Rp.95.000 ter-select)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _selectCashPreset(_totalInt);
+    });
   }
 
   Future<void> _loadCashierData() async {
     final prefs = await SharedPreferences.getInstance();
-    final cashierId = prefs.getInt('cashierId'); // Get cashier ID from shared preferences
+    final cashierId = prefs.getInt('cashierId');
 
     if (cashierId != null) {
       try {
-        final Cashier cashier =
-        await checkoutService.getCashierById(cashierId); // Fetch cashier data
+        final Cashier cashier = await checkoutService.getCashierById(cashierId);
         setState(() {
           _fullNameController.text = cashier.fullName;
           _emailController.text = cashier.email;
         });
       } catch (e) {
+        // ignore: avoid_print
         print('Error loading cashier data: $e');
       }
     }
@@ -74,11 +82,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
+    _cashPaidController.dispose();
+    _transferNoteController.dispose();
     super.dispose();
   }
 
-  /// Panggil backend /api/cart/checkout untuk validasi stok & update stok.
-  /// Return true kalau sukses (stok cukup), false kalau gagal (stok kurang / error).
+  // ====== Helper uang/kembalian ======
+  int _parseCashPaid() {
+    final raw = _cashPaidController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (raw.isEmpty) return 0;
+    return int.tryParse(raw) ?? 0;
+  }
+
+  int get _totalInt => widget.totalPrice.round();
+  int get _change => _parseCashPaid() - _totalInt;
+
+  void _selectCashPreset(int amount) {
+    setState(() {
+      _selectedCashPreset = amount;
+      _cashPaidController.text = amount.toString();
+    });
+  }
+
+  void _clearCashPreset() {
+    setState(() => _selectedCashPreset = 0);
+  }
+
+  // ====== Checkout stok di server ======
   Future<bool> _checkoutCartOnServer(int cashierId) async {
     final uri = Uri.parse('$_apiBaseUrl/api/cart/checkout?cashierId=$cashierId');
 
@@ -86,10 +116,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final response = await http.post(uri);
 
       if (response.statusCode == 200) {
-        // Sukses: stok cukup dan sudah dikurangi
         return true;
       } else {
-        // Gagal: backend kirim pesan error plain text
         final message = response.body.isNotEmpty
             ? response.body
             : 'Failed to checkout cart. Please try again.';
@@ -106,8 +134,129 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
+  // ====== Validasi cash ======
+  bool _validateCashIfCashPayment() {
+    if (_selectedPaymentMethod != 'cash') return true;
+
+    final cashPaid = _parseCashPaid();
+    if (cashPaid <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Masukkan uang customer terlebih dahulu.')),
+      );
+      return false;
+    }
+
+    if (cashPaid < _totalInt) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Uang customer kurang.')),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _onChargePressed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cashierId = prefs.getInt('cashierId');
+
+    if (cashierId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cashier not logged in.')),
+      );
+      return;
+    }
+
+    // Validasi metode transfer (pastikan pilih bank)
+    if (_selectedPaymentMethod != 'cash' &&
+        _selectedPaymentMethod != 'mandiri' &&
+        _selectedPaymentMethod != 'bca') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih metode pembayaran terlebih dahulu.')),
+      );
+      return;
+    }
+
+    // Validasi cash bila cash
+    if (!_validateCashIfCashPayment()) return;
+
+    // STEP 1: Validasi stok & update stok
+    final stockOk = await _checkoutCartOnServer(cashierId);
+    if (!stockOk) return;
+
+    // STEP 2: Submit checkout payment
+    try {
+      final cashPaid = _selectedPaymentMethod == 'cash'
+          ? _parseCashPaid().toDouble()
+          : null;
+
+      final changeAmount = _selectedPaymentMethod == 'cash'
+          ? _change.toDouble()
+          : null;
+
+      final payment = PaymentDTO(
+        cashierId: cashierId,
+        paymentMethod: _selectedPaymentMethod,
+        totalAmount: widget.totalPrice,
+        cashPaid: cashPaid,
+        changeAmount: changeAmount,
+      );
+
+      final items = widget.cartItems
+          .map(
+            (cartItem) => PaymentItemDTO(
+          cashierId: cashierId,
+          name: cartItem.product.name,
+          quantity: cartItem.quantity,
+          price: cartItem.product.price,
+          subTotal: cartItem.totalPrice,
+        ),
+      )
+          .toList();
+
+      await checkoutService.submitCheckout(payment, items);
+
+      if (!mounted) return;
+
+      // Popup Success seperti foto
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _SuccessDialog(
+          paid: _selectedPaymentMethod == 'cash'
+              ? _parseCashPaid()
+              : _totalInt,
+          change: _selectedPaymentMethod == 'cash'
+              ? (_change >= 0 ? _change : 0)
+              : 0,
+          rupiah: _rupiah,
+          onClose: () {
+            Navigator.pop(context);
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MainLayout(
+                  initialIndex: 2,
+                  cashierId: cashierId,
+                ),
+              ),
+                  (route) => false,
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit transaction: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // agar rapi seperti tampilan tablet/desktop pada foto
+    final maxWidth = 920.0;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -132,363 +281,415 @@ class _CheckoutPageState extends State<CheckoutPage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ProfilePage()),
+                  MaterialPageRoute(builder: (_) => ProfilePage()),
                 );
               },
             ),
           ],
         ),
       ),
-      body: Stepper(
-        currentStep: _currentStep,
-        onStepContinue: () {
-          if (_currentStep == 0) {
-            if (_formKey.currentState!.validate()) {
-              setState(() {
-                if (_currentStep < 2) _currentStep += 1;
-              });
-            }
-          } else if (_currentStep < 2) {
-            setState(() => _currentStep += 1);
-          } else {
-            // Last step: submit ditangani di tombol "Submit Transaction"
-          }
-        },
-        onStepCancel: () {
-          if (_currentStep > 0) {
-            setState(() => _currentStep -= 1);
-          }
-        },
-        controlsBuilder: (context, details) {
-          final isLastStep = _currentStep == 2;
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10.0),
-            child: Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: _buildPaymentLayout(context),
+          ),
+        ),
+      ),
+      bottomNavigationBar: _MockBottomNav(currentIndex: 2),
+    );
+  }
+
+  Widget _buildPaymentLayout(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header: icon + Transaction
+        Row(
+          children: const [
+            Icon(Icons.shopping_cart_checkout, size: 26, color: Color(0xFF0B5FA5)),
+            SizedBox(width: 10),
+            Text(
+              'Transaction',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Top bar: Cancel | Total | Charge
+        // Top bar: Cancel & Charge (row) + Total (center under)
+        Column(
+          children: [
+            Row(
               children: [
-                if (!isLastStep)
-                  ElevatedButton(
-                    onPressed: details.onStepContinue,
+                SizedBox(
+                  width: 140,
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.black26),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 140,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: _onChargePressed,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[900],
+                      backgroundColor: const Color(0xFF2F6BC2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     child: const Text(
-                      'Continue',
-                      style: TextStyle(color: Colors.white),
+                      'Charge',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                     ),
                   ),
-                if (!isLastStep) const SizedBox(width: 20),
-                TextButton(
-                  onPressed: details.onStepCancel,
-                  child: Text('Back', style: TextStyle(color: Colors.blue[900])),
                 ),
               ],
             ),
-          );
-        },
-        steps: [
-          Step(
-            title: const Text("1. Delivery Options"),
-            content: Form(
-              key: _formKey,
+            const SizedBox(height: 10),
+            Center(
+              child: Text(
+                _rupiah.format(widget.totalPrice),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+
+
+        const SizedBox(height: 10),
+        const Divider(),
+
+        // CASH section
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              width: 120,
+              child: Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: Text('Cash', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            Expanded(
               child: Column(
                 children: [
                   Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              isDelivery = true;
-                            });
+                        child: _AmountButton(
+                          label: _rupiah.format(_totalInt),
+                          selected: _selectedPaymentMethod == 'cash' && _selectedCashPreset == _totalInt,
+                          onTap: () {
+                            setState(() => _selectedPaymentMethod = 'cash');
+                            _selectCashPreset(_totalInt);
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                            isDelivery ? const Color(0xFF041761) : Colors.white,
-                            side: const BorderSide(color: Color(0xFF041761)),
-                          ),
-                          child: Text(
-                            "Delivery",
-                            style: TextStyle(
-                              color: isDelivery
-                                  ? Colors.white
-                                  : const Color(0xFF041761),
-                            ),
-                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              isDelivery = false;
-                            });
+                        child: _AmountButton(
+                          label: _rupiah.format(100000),
+                          selected: _selectedPaymentMethod == 'cash' && _selectedCashPreset == 100000,
+                          onTap: () {
+                            setState(() => _selectedPaymentMethod = 'cash');
+                            _selectCashPreset(100000);
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                            !isDelivery ? const Color(0xFF041761) : Colors.white,
-                            side: const BorderSide(color: Color(0xFF041761)),
-                          ),
-                          child: Text(
-                            "Pick Up",
-                            style: TextStyle(
-                              color: !isDelivery
-                                  ? Colors.white
-                                  : const Color(0xFF041761),
-                            ),
-                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  if (isDelivery) ...[
-                    TextFormField(
-                      controller: _fullNameController,
-                      decoration: const InputDecoration(labelText: "Full Name"),
-                      validator: (value) =>
-                      value == null || value.isEmpty ? 'Required' : null,
+                  TextField(
+                    controller: _cashPaidController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      hintText: _rupiah.format(100000),
+                      border: const OutlineInputBorder(),
+                      enabledBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black26),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(labelText: "Email"),
-                      validator: (value) =>
-                      value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                  ] else ...[
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: "Pickup Location"),
-                      value: selectedLocation,
-                      items: pickupLocations.map((location) {
-                        return DropdownMenuItem(
-                            value: location, child: Text(location));
-                      }).toList(),
-                      onChanged: (value) => setState(() => selectedLocation = value),
-                      validator: (value) =>
-                      value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: "Pickup Time"),
-                      value: selectedTime,
-                      items: pickupTimes.map((time) {
-                        return DropdownMenuItem(value: time, child: Text(time));
-                      }).toList(),
-                      onChanged: (value) => setState(() => selectedTime = value),
-                      validator: (value) =>
-                      value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                  ],
+                    onTap: () {
+                      // user ingin custom input -> lepas preset
+                      if (_selectedPaymentMethod != 'cash') {
+                        setState(() => _selectedPaymentMethod = 'cash');
+                      }
+                      _clearCashPreset();
+                    },
+                    onChanged: (_) {
+                      if (_selectedPaymentMethod != 'cash') {
+                        setState(() => _selectedPaymentMethod = 'cash');
+                      }
+                      _clearCashPreset();
+                      setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Kembalian kecil (optional)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Text('Change: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        _selectedPaymentMethod == 'cash' && _parseCashPaid() > 0
+                            ? (_change >= 0 ? _rupiah.format(_change) : '-')
+                            : '-',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: (_selectedPaymentMethod == 'cash' && _change >= 0) ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            isActive: _currentStep == 0,
-            state: _currentStep == 0 ? StepState.editing : StepState.indexed,
-          ),
-          Step(
-            title: const Text("2. Payment"),
-            content: Column(
-              children: [
-                RadioListTile(
-                  title: const Text("Credit Card"),
-                  value: "credit",
-                  groupValue: _selectedPaymentMethod,
-                  onChanged: (value) =>
-                      setState(() => _selectedPaymentMethod = value.toString()),
-                ),
-                RadioListTile(
-                  title: const Text("PayPal"),
-                  value: "paypal",
-                  groupValue: _selectedPaymentMethod,
-                  onChanged: (value) =>
-                      setState(() => _selectedPaymentMethod = value.toString()),
-                ),
-                RadioListTile(
-                  title: const Text("Cash on Delivery"),
-                  value: "cod",
-                  groupValue: _selectedPaymentMethod,
-                  onChanged: (value) =>
-                      setState(() => _selectedPaymentMethod = value.toString()),
-                ),
-              ],
+          ],
+        ),
+
+        const SizedBox(height: 16),
+        const Divider(),
+
+        // TRANSFER section
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              width: 120,
+              child: Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: Text('Transfer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
             ),
-            isActive: _currentStep == 1,
-            state: _currentStep == 1 ? StepState.editing : StepState.indexed,
-          ),
-          Step(
-            title: const Text("3. Transaction Review"),
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Transaction Summary:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                const SizedBox(height: 10),
-                ...widget.cartItems.map(
-                      (item) => Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 5),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Image.network(
-                            item.product.photoUrl,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item.product.name,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold)),
-                                Text('Qty: ${item.quantity}'),
-                                const SizedBox(height: 5),
-                                Text(
-                                  'Rp ${item.totalPrice.toStringAsFixed(0).replaceAllMapped(
-                                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                                        (match) => '${match[1]}.',
-                                  )}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+            Expanded(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _BankButton(
+                          label: 'Mandiri',
+                          selected: _selectedPaymentMethod == 'mandiri',
+                          onTap: () => setState(() => _selectedPaymentMethod = 'mandiri'),
+                        ),
                       ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _BankButton(
+                          label: 'BCA',
+                          selected: _selectedPaymentMethod == 'bca',
+                          onTap: () => setState(() => _selectedPaymentMethod = 'bca'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _transferNoteController,
+                    decoration: const InputDecoration(
+                      hintText: 'Optional Note',
+                      border: OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black26),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _AmountButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AmountButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: selected ? const Color(0xFF2F6BC2) : Colors.white,
+          foregroundColor: selected ? Colors.white : Colors.black,
+          side: BorderSide(color: selected ? const Color(0xFF2F6BC2) : Colors.black26),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+class _BankButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _BankButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          side: BorderSide(color: selected ? const Color(0xFF2F6BC2) : Colors.black26, width: selected ? 1.6 : 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+class _SuccessDialog extends StatelessWidget {
+  final int paid;
+  final int change;
+  final NumberFormat rupiah;
+  final VoidCallback onClose;
+
+  const _SuccessDialog({
+    required this.paid,
+    required this.change,
+    required this.rupiah,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 82,
+                  height: 82,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.green,
+                  ),
+                  child: const Icon(Icons.check, color: Colors.white, size: 44),
                 ),
-                const Divider(),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    'Total: Rp ${widget.totalPrice.toStringAsFixed(0).replaceAllMapped(
-                      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                          (match) => '${match[1]}.',
-                    )}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
+                const SizedBox(height: 14),
+                const Text('SUCCESS', style: TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 14),
+
+                Row(
+                  children: [
+                    const Expanded(child: Text('Paid', style: TextStyle(fontWeight: FontWeight.w600))),
+                    Text(rupiah.format(paid), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      // Validasi pickup jika bukan delivery
-                      if (!isDelivery &&
-                          (selectedLocation == null || selectedTime == null)) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  'Please select pickup location and time.')),
-                        );
-                        return;
-                      }
-
-                      // Ambil cashier ID
-                      final prefs =
-                      await SharedPreferences.getInstance();
-                      final cashierId = prefs.getInt('cashierId');
-
-                      if (cashierId == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Cashier not logged in.')),
-                        );
-                        return;
-                      }
-
-                      // STEP 1: Validasi stok & update stok di backend
-                      final stockOk =
-                      await _checkoutCartOnServer(cashierId);
-                      if (!stockOk) {
-                        // Kalau stok tidak cukup, stop di sini.
-                        // Pesan sudah ditampilkan dari _checkoutCartOnServer.
-                        return;
-                      }
-
-                      // STEP 2: Kirim data payment + items seperti sebelumnya
-                      try {
-                        final payment = PaymentDTO(
-                          cashierId: cashierId,
-                          paymentMethod: _selectedPaymentMethod ?? 'credit',
-                          totalAmount: widget.totalPrice,
-                        );
-
-                        final items = widget.cartItems
-                            .map(
-                              (cartItem) => PaymentItemDTO(
-                            cashierId: cashierId,
-                            name: cartItem.product.name,
-                            quantity: cartItem.quantity,
-                            price: cartItem.product.price,
-                            subTotal: cartItem.totalPrice,
-                          ),
-                        )
-                            .toList();
-
-                        print("Submitting checkout...");
-                        await checkoutService.submitCheckout(
-                            payment, items);
-                        print("Checkout submitted!");
-
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text("Transaction Confirmed"),
-                            content: const Text("Thank you for your purchase!"),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context); // close dialog
-                                  Navigator.pushAndRemoveUntil(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => MainLayout(   // <-- HAPUS const
-                                        initialIndex: 2,
-                                        cashierId: cashierId,             // <-- KIRIM cashierId yang barusan dipakai checkout
-                                      ),
-                                    ),
-                                        (Route<dynamic> route) => false,
-                                  );
-                                },
-                                child: const Text("OK"),
-                              ),
-                            ],
-                          ),
-                        );
-                      } catch (e) {
-                        print('Checkout submission failed: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  'Failed to submit transaction: $e')),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF041761),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40, vertical: 12),
-                    ),
-                    child: const Text(
-                      "Submit Transaction",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Expanded(child: Text('Change', style: TextStyle(fontWeight: FontWeight.w600))),
+                    Text(rupiah.format(change), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ],
                 ),
               ],
             ),
-            isActive: _currentStep == 2,
+          ),
+
+          // tombol close (X) merah seperti foto
+          Positioned(
+            right: 8,
+            top: 8,
+            child: InkWell(
+              onTap: onClose,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+/// Bottom navbar pada foto (ikon saja).
+/// Silakan sambungkan onTap ke navigasi asli Anda bila sudah ada.
+class _MockBottomNav extends StatelessWidget {
+  final int currentIndex;
+  const _MockBottomNav({required this.currentIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomNavigationBar(
+      currentIndex: currentIndex,
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: Colors.black,
+      unselectedItemColor: Colors.black45,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.lock_outline), label: 'PoS'),
+        BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Transaction'),
+        BottomNavigationBarItem(icon: Icon(Icons.shopping_cart_outlined), label: 'Cart'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+      ],
+    );
+  }
+}
+
+
+
+
+
+
+
+

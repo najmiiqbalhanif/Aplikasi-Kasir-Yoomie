@@ -6,8 +6,6 @@ import '../../models/CartItem.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:helloworld/presentation/pages/checkoutPayment.dart';
 
-// === THEME CONST BIAR KONSISTEN DENGAN LOGIN / REGISTER / POS ===
-// Kalau sudah punya di file lain, boleh hapus bagian ini dan pakai import.
 const Color kBackgroundColor = Color(0xFFF3F6FD);
 const Color kPrimaryGradientStart = Color(0xFF3B82F6);
 const Color kPrimaryGradientEnd = Color(0xFF4F46E5);

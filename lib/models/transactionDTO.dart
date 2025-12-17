@@ -3,9 +3,11 @@ class TransactionDTO {
   final int cashierId;
   final String cashierName;
   final String createdOn;
-  final String cartSummary; // Ringkasan produk di cart
-  final double totalAmount; // Total harga
-  final String paymentMethod; // Metode pembayaran
+  final String cartSummary;
+  final double totalAmount;
+  final String paymentMethod;
+  final double? cashPaid;
+  final double? changeAmount;
 
   TransactionDTO({
     required this.id,
@@ -15,6 +17,8 @@ class TransactionDTO {
     required this.cartSummary,
     required this.totalAmount,
     required this.paymentMethod,
+    this.cashPaid,
+    this.changeAmount,
   });
 
   factory TransactionDTO.fromJson(Map<String, dynamic> json) {
@@ -24,8 +28,10 @@ class TransactionDTO {
       cashierName: json['cashierName'],
       createdOn: json['createdOn'],
       cartSummary: json['cartSummary'],
-      totalAmount: json['totalAmount'].toDouble(),
+      totalAmount: (json['totalAmount'] as num).toDouble(),
       paymentMethod: json['paymentMethod'],
+      cashPaid: json['cashPaid'] == null ? null : (json['cashPaid'] as num).toDouble(),
+      changeAmount: json['changeAmount'] == null ? null : (json['changeAmount'] as num).toDouble(),
     );
   }
 
@@ -38,6 +44,8 @@ class TransactionDTO {
       'cartSummary': cartSummary,
       'totalAmount': totalAmount,
       'paymentMethod': paymentMethod,
+      'cashPaid': cashPaid,
+      'changeAmount': changeAmount,
     };
   }
 }

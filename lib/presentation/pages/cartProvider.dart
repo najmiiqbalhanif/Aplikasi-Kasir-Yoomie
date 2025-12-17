@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '/models/Product.dart';
-import '/models/CartItem.dart'; // Penting: Pastikan ini mengacu pada model CartItem yang benar
+import '/models/CartItem.dart';
 
 class CartProvider with ChangeNotifier {
   final List<CartItem> _items = [];
@@ -15,11 +15,10 @@ class CartProvider with ChangeNotifier {
     return total;
   }
 
-  // Pastikan getter totalPrice ada di sini
   double get totalPrice {
     double total = 0.0;
     for (var item in _items) {
-      total += item.totalPrice; // Asumsi CartItem memiliki getter totalPrice
+      total += item.totalPrice;
     }
     return total;
   }
@@ -34,7 +33,6 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Pastikan addExistingItem ada di sini
   void addExistingItem(Product product, int quantity) {
     int index = _items.indexWhere((item) => item.product.id == product.id);
     if (index != -1) {
@@ -45,7 +43,6 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Pastikan increaseQuantity ada di sini
   void increaseQuantity(Product product) {
     int index = _items.indexWhere((item) => item.product.id == product.id);
     if (index != -1) {
@@ -54,7 +51,6 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  // Pastikan decreaseQuantity ada di sini
   void decreaseQuantity(Product product) {
     int index = _items.indexWhere((item) => item.product.id == product.id);
     if (index != -1) {
@@ -67,19 +63,16 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  // Pastikan removeItem ada di sini
   void removeItem(Product product) {
     _items.removeWhere((item) => item.product.id == product.id);
     notifyListeners();
   }
 
-  // Pastikan clearCart ada di sini
   void clearCart() {
     _items.clear();
     notifyListeners();
   }
 
-  // di helloworld/presentation/pages/cartProvider.dart
   void updateQuantity(Product product, int newQuantity) {
     final existingItemIndex = _items.indexWhere((item) => item.product.id == product.id);
     if (existingItemIndex >= 0) {

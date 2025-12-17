@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Import package provider
-import 'presentation/pages/login.dart'; // Arahkan ke LoginPage
-import 'services/notificationService.dart'; // Import NotificationService
-import 'presentation/pages/cartProvider.dart'; // Sesuaikan path ini (CartProvider)
+import 'package:provider/provider.dart';
+import 'presentation/pages/login.dart';
+import 'services/notificationService.dart';
+import 'presentation/pages/cartProvider.dart';
 
 void main() async {
-  // Pastikan binding Flutter sudah diinisialisasi sebelum memanggil native code
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi NotificationService
   await NotificationService.initialize();
 
-  // Jalankan aplikasi dengan ChangeNotifierProvider sebagai root widget
   runApp(
     ChangeNotifierProvider(
       create: (context) => CartProvider(),
@@ -27,28 +24,26 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const LoginPage(), // Aplikasi dimulai dari LoginPage
-      title: 'AthleteZone',
+      home: const LoginPage(),
+      title: 'Aplikasi-Kasir-Yoomie',
       theme: ThemeData(
-        // Tema aplikasi umum
-        primarySwatch: Colors.blue, // Contoh warna primer
-        colorScheme: ColorScheme.light( // Contoh skema warna
+        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.light(
           primary: Colors.blue,
           onPrimary: Colors.white,
           secondary: Colors.blue,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData( // Contoh tema ElevatedButton
+        elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue[900],
           ),
         ),
-        outlinedButtonTheme: OutlinedButtonThemeData( // Contoh tema OutlinedButton
+        outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: Colors.blue[900]!),
             foregroundColor: Colors.blue[900],
           ),
         ),
-        // Tema untuk BottomNavigationBar
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           selectedItemColor: const Color(0xFF06207C),
           unselectedItemColor: Colors.grey[600],

@@ -1,5 +1,3 @@
-// lib/models/Product.dart
-
 class Product {
   final String name;
   final String brand;

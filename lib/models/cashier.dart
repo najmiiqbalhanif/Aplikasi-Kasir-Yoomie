@@ -3,9 +3,8 @@ class Cashier {
   final String email;
   final String fullName;
   final String? profileImage;
-  final String? password; // Optional, hanya dipakai saat register/login
-  final int? id; // ID cashier dari backend, nullable karena tidak selalu dikirim dari client
-
+  final String? password;
+  final int? id;
   Cashier({
     required this.cashierName,
     required this.email,
@@ -15,7 +14,6 @@ class Cashier {
     this.id,
   });
 
-  // Digunakan saat ingin mengirim data ke backend (register/login)
   Map<String, dynamic> toJson() {
     final data = {
       'cashierName': cashierName,
@@ -29,7 +27,6 @@ class Cashier {
     return data;
   }
 
-  // Digunakan saat menerima data dari backend (login response)
   factory Cashier.fromJson(Map<String, dynamic> json) {
     return Cashier(
       id: json['id'],
