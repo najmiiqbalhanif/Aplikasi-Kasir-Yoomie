@@ -25,9 +25,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _cashierNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
+  // ✅ Password section (opsional)
+  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+
   File? _selectedImage;
   Cashier? _cashier;
   bool _isLoading = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -40,6 +50,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _fullNameController.dispose();
     _cashierNameController.dispose();
     _emailController.dispose();
+
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -54,12 +68,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _emailController.text = cashier.email ?? '';
         _isLoading = false;
       });
+    } else {
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _pickImage() async {
-    final pickedFile =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
         _selectedImage = File(pickedFile.path);
@@ -67,35 +82,106 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
-      final hasChanges = _fullNameController.text != _cashier!.fullName ||
-          _cashierNameController.text != _cashier!.cashierName ||
-          _emailController.text != _cashier!.email ||
-          _selectedImage != null;
+  bool _wantsPasswordChange() {
+    return _currentPasswordController.text.isNotEmpty ||
+        _newPasswordController.text.isNotEmpty ||
+        _confirmPasswordController.text.isNotEmpty;
+  }
 
-      if (!hasChanges) {
-        Navigator.pop(context, false); // Tidak ada perubahan
+  String? _validateNewPassword(String pw) {
+    if (pw.length < 8) return 'Password minimal 8 karakter.';
+    final hasSpecial = RegExp(r'[^A-Za-z0-9]').hasMatch(pw);
+    if (!hasSpecial) return 'Password harus mengandung 1 karakter spesial (contoh: !@#\$%).';
+    return null;
+  }
+
+  Future<void> _saveProfile() async {
+    if (_cashier == null) return;
+
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final hasProfileChanges =
+        _fullNameController.text != (_cashier!.fullName ?? '') ||
+            _cashierNameController.text != (_cashier!.cashierName ?? '') ||
+            _emailController.text != (_cashier!.email ?? '') ||
+            _selectedImage != null;
+
+    final wantsPw = _wantsPasswordChange();
+
+    // ✅ Validasi password kalau user ingin ganti
+    if (wantsPw) {
+      final current = _currentPasswordController.text;
+      final nw = _newPasswordController.text;
+      final cf = _confirmPasswordController.text;
+
+      if (current.isEmpty || nw.isEmpty || cf.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Jika ingin ganti password, semua field password wajib diisi.')),
+        );
         return;
       }
 
-      final success = await _cashierService.updateCashierProfile(
+      final pwErr = _validateNewPassword(nw);
+      if (pwErr != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(pwErr)));
+        return;
+      }
+
+      if (nw != cf) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Konfirmasi password tidak sama.')),
+        );
+        return;
+      }
+    }
+
+    if (!hasProfileChanges && !wantsPw) {
+      Navigator.pop(context, false);
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    // 1) Update profil jika ada perubahan
+    bool profileOk = true;
+    if (hasProfileChanges) {
+      profileOk = await _cashierService.updateCashierProfile(
         cashierName: _cashierNameController.text,
         email: _emailController.text,
         fullName: _fullNameController.text,
         profileImage: _selectedImage?.path,
       );
+    }
+
+    if (!mounted) return;
+
+    if (!profileOk) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan profil')),
+      );
+      return;
+    }
+
+    // 2) Change password jika user isi
+    if (wantsPw) {
+      final err = await _cashierService.changeCashierPassword(
+        currentPassword: _currentPasswordController.text,
+        newPassword: _newPasswordController.text,
+        confirmPassword: _confirmPasswordController.text,
+      );
 
       if (!mounted) return;
 
-      if (success) {
-        Navigator.pop(context, true); // Ada perubahan dan berhasil
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menyimpan profil')),
-        );
+      if (err != null) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+        return;
       }
     }
+
+    setState(() => _isSaving = false);
+    Navigator.pop(context, true);
   }
 
   @override
@@ -125,7 +211,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  // Header dengan gradient + tombol back + judul
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
@@ -141,7 +226,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris back + title
           Row(
             children: [
               IconButton(
@@ -175,7 +259,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
           ),
           const SizedBox(height: 16),
-          // Avatar di tengah
           Center(
             child: GestureDetector(
               onTap: _pickImage,
@@ -189,8 +272,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ? FileImage(_selectedImage!)
                         : (_cashier?.profileImage != null &&
                         _cashier!.profileImage!.isNotEmpty
-                        ? NetworkImage(_cashier!.profileImage!)
-                    as ImageProvider
+                        ? NetworkImage(_cashier!.profileImage!) as ImageProvider
                         : null),
                     child: (_selectedImage == null &&
                         (_cashier?.profileImage == null ||
@@ -251,7 +333,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  // Card putih berisi form dengan input pill
   Widget _buildFormCard() {
     return Container(
       width: double.infinity,
@@ -272,87 +353,96 @@ class _EditProfilePageState extends State<EditProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Informasi Profil',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            const Text('Informasi Profil', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            const Text(
-              'Pastikan data di bawah sudah sesuai.',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: kTextGrey,
-              ),
-            ),
+            const Text('Pastikan data di bawah sudah sesuai.', style: TextStyle(fontSize: 12.5, color: kTextGrey)),
             const SizedBox(height: 16),
 
-            // Nama lengkap
-            const Text(
-              'Nama lengkap',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            const Text('Nama lengkap', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
               controller: _fullNameController,
-              validator: (value) =>
-              (value == null || value.isEmpty) ? 'Required' : null,
-              decoration: _pillInputDecoration(
-                hintText: 'Nama lengkap kasir',
-              ),
+              validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+              decoration: _pillInputDecoration(hintText: 'Nama lengkap kasir'),
             ),
 
             const SizedBox(height: 12),
 
-            // Nama kasir
-            const Text(
-              'Nama kasir (username)',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            const Text('Nama kasir (username)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
               controller: _cashierNameController,
-              validator: (value) =>
-              (value == null || value.isEmpty) ? 'Required' : null,
-              decoration: _pillInputDecoration(
-                hintText: 'Contoh: kasir1, kasir_toko',
+              validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+              decoration: _pillInputDecoration(hintText: 'Contoh: kasir1, kasir_toko'),
+            ),
+
+            const SizedBox(height: 12),
+
+            const Text('Email', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            TextFormField(
+              controller: _emailController,
+              validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+              keyboardType: TextInputType.emailAddress,
+              decoration: _pillInputDecoration(hintText: 'kasir@tokoanda.com'),
+            ),
+
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+
+            const Text('Ubah Password (opsional)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            const Text(
+              'Isi hanya jika ingin mengganti password. Minimal 8 karakter & 1 karakter spesial.',
+              style: TextStyle(fontSize: 12.5, color: kTextGrey),
+            ),
+            const SizedBox(height: 14),
+
+            const Text('Password saat ini', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            TextFormField(
+              controller: _currentPasswordController,
+              obscureText: _obscureCurrent,
+              decoration: _passwordDecoration(
+                hintText: 'Masukkan password saat ini',
+                obscure: _obscureCurrent,
+                onToggle: () => setState(() => _obscureCurrent = !_obscureCurrent),
               ),
             ),
 
             const SizedBox(height: 12),
 
-            // Email
-            const Text(
-              'Email',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            const Text('Password baru', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
-              controller: _emailController,
-              validator: (value) =>
-              (value == null || value.isEmpty) ? 'Required' : null,
-              keyboardType: TextInputType.emailAddress,
-              decoration: _pillInputDecoration(
-                hintText: 'kasir@tokoanda.com',
+              controller: _newPasswordController,
+              obscureText: _obscureNew,
+              decoration: _passwordDecoration(
+                hintText: 'Buat password baru',
+                obscure: _obscureNew,
+                onToggle: () => setState(() => _obscureNew = !_obscureNew),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            const Text('Konfirmasi password baru', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirm,
+              decoration: _passwordDecoration(
+                hintText: 'Ulangi password baru',
+                obscure: _obscureConfirm,
+                onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
               ),
             ),
 
             const SizedBox(height: 20),
 
-            // Tombol simpan (gradient)
             GestureDetector(
-              onTap: _saveProfile,
+              onTap: _isSaving ? null : _saveProfile,
               child: Container(
                 width: double.infinity,
                 height: 46,
@@ -372,13 +462,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ],
                 ),
                 alignment: Alignment.center,
-                child: const Text(
+                child: _isSaving
+                    ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+                    : const Text(
                   'Simpan Perubahan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -388,23 +480,42 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  // Reusable decoration untuk input pill
   InputDecoration _pillInputDecoration({required String hintText}) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(
-        fontSize: 12.5,
-        color: kTextGrey,
-      ),
+      hintStyle: const TextStyle(fontSize: 12.5, color: kTextGrey),
       filled: true,
       fillColor: const Color(0xFFF3F4F6),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: 12,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(999),
         borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  InputDecoration _passwordDecoration({
+    required String hintText,
+    required bool obscure,
+    required VoidCallback onToggle,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: const TextStyle(fontSize: 12.5, color: kTextGrey),
+      filled: true,
+      fillColor: const Color(0xFFF3F4F6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(999),
+        borderSide: BorderSide.none,
+      ),
+      suffixIcon: IconButton(
+        icon: Icon(
+          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          size: 20,
+          color: kTextGrey,
+        ),
+        onPressed: onToggle,
       ),
     );
   }
