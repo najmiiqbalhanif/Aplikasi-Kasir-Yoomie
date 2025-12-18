@@ -1,4 +1,3 @@
-// lib/presentation/mainLayout.dart
 import 'package:flutter/material.dart';
 import 'pages/posPage.dart';
 import 'pages/transactionsPage.dart';

@@ -8,7 +8,7 @@ class productPageDetail extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Product Detail"),
-        centerTitle: true, // Tambahkan ini
+        centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,

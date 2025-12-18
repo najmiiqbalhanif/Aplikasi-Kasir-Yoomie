@@ -35,14 +35,34 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _forceLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('cashierId');
+    await prefs.remove('cashierName');
+
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/login',
+          (route) => false,
+    );
+  }
+
   void fetchProducts() async {
     try {
       final products = await Homepageservice.fetchHomepageProducts();
+      if (!mounted) return;
       setState(() {
         _products = products;
         _isLoading = false;
       });
     } catch (e) {
+      if (e.toString().contains('UNAUTHORIZED')) {
+        await _forceLogout();
+        return;
+      }
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });

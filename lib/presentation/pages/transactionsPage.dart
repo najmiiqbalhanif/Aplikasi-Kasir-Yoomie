@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/transactionDTO.dart';
 import '../../services/transactionService.dart';
+import 'login.dart';
 
 // Theme konsisten dengan halaman lain
 const Color kBackgroundColor = Color(0xFFF3F6FD);
@@ -37,6 +38,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
     _fetchTransactions();
   }
 
+  Future<void> _forceLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('cashierId');
+    await prefs.remove('cashierName');
+
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+    );
+  }
+
   Future<void> _fetchTransactions() async {
     setState(() {
       isLoading = true;
@@ -64,12 +79,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
         isLoading = false;
       });
     } catch (e) {
+      if (e.toString().contains('UNAUTHORIZED')) {
+        await _forceLogout();
+        return;
+      }
+
       // ignore: avoid_print
       print('Error fetching transactions: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
-        errorMessage =
-        'Gagal memuat transaksi. Coba lagi beberapa saat lagi.\n($e)';
+        errorMessage = 'Gagal memuat transaksi. Coba lagi beberapa saat lagi.';
       });
     }
   }

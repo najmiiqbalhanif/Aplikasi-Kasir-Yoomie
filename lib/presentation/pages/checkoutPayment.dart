@@ -9,6 +9,8 @@ import '../mainLayout.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import '../../services/authHeader.dart';
+
 
 class CheckoutPage extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -47,17 +49,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
     decimalDigits: 0,
   );
 
-  int _selectedCashPreset = 0; // nilai preset cash yang dipilih (0 = none/custom)
+  // preset cash yang dipilih (0 = none/custom)
+  int _selectedCashPreset = 0;
+
+  // Ubah sesuai kebutuhan (10rb / 5rb / 50rb, dsb.)
+  static const int _cashRoundingMultiple = 10000;
 
   @override
   void initState() {
     super.initState();
     _loadCashierData();
 
-    // Default: preset = total (seperti di foto tombol Rp.95.000 ter-select)
+    // Default: pilih nominal pas (tombol kiri)
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _selectedPaymentMethod = 'cash';
       _selectCashPreset(_totalInt);
     });
+  }
+
+  Future<void> _forceLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('cashierId');
+    await prefs.remove('cashierName');
+
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
   Future<void> _loadCashierData() async {
@@ -72,7 +89,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
           _emailController.text = cashier.email;
         });
       } catch (e) {
-        // ignore: avoid_print
+        if (e.toString().contains('UNAUTHORIZED')) {
+          await _forceLogout();
+          return;
+        }
         print('Error loading cashier data: $e');
       }
     }
@@ -97,6 +117,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
   int get _totalInt => widget.totalPrice.round();
   int get _change => _parseCashPaid() - _totalInt;
 
+  int _roundUpToMultiple(int value, int multiple) {
+    if (multiple <= 0) return value;
+    return ((value + multiple - 1) ~/ multiple) * multiple;
+  }
+
+  int get _roundedUpCashPreset =>
+      _roundUpToMultiple(_totalInt, _cashRoundingMultiple);
+
   void _selectCashPreset(int amount) {
     setState(() {
       _selectedCashPreset = amount;
@@ -113,10 +141,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final uri = Uri.parse('$_apiBaseUrl/api/cart/checkout?cashierId=$cashierId');
 
     try {
-      final response = await http.post(uri);
-
-      if (response.statusCode == 200) {
+      final response = await http.post(uri,
+      headers: await authHeader(),
+    );
+    if (response.statusCode == 200) {
         return true;
+    } else if (response.statusCode == 401) {
+      await _forceLogout(); // ✅ auto logout
+      return false;
       } else {
         final message = response.body.isNotEmpty
             ? response.body
@@ -186,13 +218,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     // STEP 2: Submit checkout payment
     try {
-      final cashPaid = _selectedPaymentMethod == 'cash'
-          ? _parseCashPaid().toDouble()
-          : null;
+      final cashPaid =
+      _selectedPaymentMethod == 'cash' ? _parseCashPaid().toDouble() : null;
 
-      final changeAmount = _selectedPaymentMethod == 'cash'
-          ? _change.toDouble()
-          : null;
+      final changeAmount =
+      _selectedPaymentMethod == 'cash' ? _change.toDouble() : null;
 
       final payment = PaymentDTO(
         cashierId: cashierId,
@@ -218,14 +248,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
       if (!mounted) return;
 
-      // Popup Success seperti foto
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => _SuccessDialog(
-          paid: _selectedPaymentMethod == 'cash'
-              ? _parseCashPaid()
-              : _totalInt,
+          paid: _selectedPaymentMethod == 'cash' ? _parseCashPaid() : _totalInt,
           change: _selectedPaymentMethod == 'cash'
               ? (_change >= 0 ? _change : 0)
               : 0,
@@ -246,6 +273,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       );
     } catch (e) {
+      if (e.toString().contains('UNAUTHORIZED')) {
+        await _forceLogout();
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit transaction: $e')),
       );
@@ -254,7 +285,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    // agar rapi seperti tampilan tablet/desktop pada foto
     final maxWidth = 920.0;
 
     return Scaffold(
@@ -264,7 +294,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         title: Row(
           children: [
             const Text(
-              "AtheleteZone",
+              "Yoomie",
               style: TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.bold,
@@ -277,7 +307,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
             const Icon(Icons.shopping_cart_outlined, color: Colors.black),
             const SizedBox(width: 20),
             IconButton(
-              icon: const Icon(Icons.account_circle_outlined, color: Colors.black),
+              icon: const Icon(Icons.account_circle_outlined,
+                  color: Colors.black),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -302,13 +333,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Widget _buildPaymentLayout(BuildContext context) {
+    final roundedPreset = _roundedUpCashPreset;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header: icon + Transaction
         Row(
           children: const [
-            Icon(Icons.shopping_cart_checkout, size: 26, color: Color(0xFF0B5FA5)),
+            Icon(Icons.shopping_cart_checkout,
+                size: 26, color: Color(0xFF0B5FA5)),
             SizedBox(width: 10),
             Text(
               'Transaction',
@@ -318,8 +351,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
         const SizedBox(height: 14),
 
-        // Top bar: Cancel | Total | Charge
-        // Top bar: Cancel & Charge (row) + Total (center under)
+        // Cancel & Charge (row) + Total (center under)
         Column(
           children: [
             Row(
@@ -332,7 +364,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black,
                       side: const BorderSide(color: Colors.black26),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -345,11 +379,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     onPressed: _onChargePressed,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2F6BC2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text(
                       'Charge',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -359,12 +396,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
             Center(
               child: Text(
                 _rupiah.format(widget.totalPrice),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                style:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           ],
         ),
-
 
         const SizedBox(height: 10),
         const Divider(),
@@ -378,7 +415,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
               width: 120,
               child: Padding(
                 padding: EdgeInsets.only(top: 10),
-                child: Text('Cash', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: Text('Cash',
+                    style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
             Expanded(
@@ -386,10 +425,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 children: [
                   Row(
                     children: [
+                      // Tombol kiri: nominal pas (total)
                       Expanded(
                         child: _AmountButton(
                           label: _rupiah.format(_totalInt),
-                          selected: _selectedPaymentMethod == 'cash' && _selectedCashPreset == _totalInt,
+                          selected: _selectedPaymentMethod == 'cash' &&
+                              _selectedCashPreset == _totalInt,
                           onTap: () {
                             setState(() => _selectedPaymentMethod = 'cash');
                             _selectCashPreset(_totalInt);
@@ -397,36 +438,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         ),
                       ),
                       const SizedBox(width: 10),
+
+                      // Tombol kanan: kelipatan ke atas (misal 107rb -> 110rb)
                       Expanded(
                         child: _AmountButton(
-                          label: _rupiah.format(100000),
-                          selected: _selectedPaymentMethod == 'cash' && _selectedCashPreset == 100000,
+                          label: _rupiah.format(roundedPreset),
+                          selected: _selectedPaymentMethod == 'cash' &&
+                              _selectedCashPreset == roundedPreset,
                           onTap: () {
                             setState(() => _selectedPaymentMethod = 'cash');
-                            _selectCashPreset(100000);
+                            _selectCashPreset(roundedPreset);
                           },
                         ),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 10),
                   TextField(
                     controller: _cashPaidController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
-                      hintText: _rupiah.format(100000),
+                      hintText: _rupiah.format(roundedPreset),
                       border: const OutlineInputBorder(),
                       enabledBorder: const OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.black26),
                       ),
                       focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
+                        borderSide:
+                        BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                     onTap: () {
-                      // user ingin custom input -> lepas preset
                       if (_selectedPaymentMethod != 'cash') {
                         setState(() => _selectedPaymentMethod = 'cash');
                       }
@@ -440,20 +486,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       setState(() {});
                     },
                   ),
+
                   const SizedBox(height: 10),
 
-                  // Kembalian kecil (optional)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const Text('Change: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const Text('Change: ',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
                       Text(
                         _selectedPaymentMethod == 'cash' && _parseCashPaid() > 0
                             ? (_change >= 0 ? _rupiah.format(_change) : '-')
                             : '-',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: (_selectedPaymentMethod == 'cash' && _change >= 0) ? Colors.green : Colors.red,
+                          color: (_selectedPaymentMethod == 'cash' &&
+                              _parseCashPaid() > 0 &&
+                              _change >= 0)
+                              ? Colors.green
+                              : Colors.red,
                         ),
                       ),
                     ],
@@ -476,7 +527,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
               width: 120,
               child: Padding(
                 padding: EdgeInsets.only(top: 10),
-                child: Text('Transfer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: Text('Transfer',
+                    style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
             Expanded(
@@ -488,7 +541,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         child: _BankButton(
                           label: 'Mandiri',
                           selected: _selectedPaymentMethod == 'mandiri',
-                          onTap: () => setState(() => _selectedPaymentMethod = 'mandiri'),
+                          onTap: () => setState(
+                                  () => _selectedPaymentMethod = 'mandiri'),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -496,7 +550,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         child: _BankButton(
                           label: 'BCA',
                           selected: _selectedPaymentMethod == 'bca',
-                          onTap: () => setState(() => _selectedPaymentMethod = 'bca'),
+                          onTap: () =>
+                              setState(() => _selectedPaymentMethod = 'bca'),
                         ),
                       ),
                     ],
@@ -511,9 +566,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         borderSide: BorderSide(color: Colors.black26),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
+                        borderSide:
+                        BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
                       ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding:
+                      EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),
                 ],
@@ -546,7 +603,9 @@ class _AmountButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           backgroundColor: selected ? const Color(0xFF2F6BC2) : Colors.white,
           foregroundColor: selected ? Colors.white : Colors.black,
-          side: BorderSide(color: selected ? const Color(0xFF2F6BC2) : Colors.black26),
+          side: BorderSide(
+            color: selected ? const Color(0xFF2F6BC2) : Colors.black26,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
         child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -575,7 +634,10 @@ class _BankButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
-          side: BorderSide(color: selected ? const Color(0xFF2F6BC2) : Colors.black26, width: selected ? 1.6 : 1),
+          side: BorderSide(
+            color: selected ? const Color(0xFF2F6BC2) : Colors.black26,
+            width: selected ? 1.6 : 1,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
         child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -622,7 +684,6 @@ class _SuccessDialog extends StatelessWidget {
                 const SizedBox(height: 14),
                 const Text('SUCCESS', style: TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 14),
-
                 Row(
                   children: [
                     const Expanded(child: Text('Paid', style: TextStyle(fontWeight: FontWeight.w600))),
@@ -639,8 +700,6 @@ class _SuccessDialog extends StatelessWidget {
               ],
             ),
           ),
-
-          // tombol close (X) merah seperti foto
           Positioned(
             right: 8,
             top: 8,
@@ -663,8 +722,6 @@ class _SuccessDialog extends StatelessWidget {
   }
 }
 
-/// Bottom navbar pada foto (ikon saja).
-/// Silakan sambungkan onTap ke navigasi asli Anda bila sudah ada.
 class _MockBottomNav extends StatelessWidget {
   final int currentIndex;
   const _MockBottomNav({required this.currentIndex});
@@ -685,11 +742,3 @@ class _MockBottomNav extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-

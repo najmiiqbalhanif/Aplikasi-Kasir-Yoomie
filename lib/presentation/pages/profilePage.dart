@@ -4,7 +4,7 @@ import '../../services/authService.dart';
 import '../../models/cashier.dart';
 import 'editProfilePage.dart';
 import 'FavoriteProductsPage.dart';
-import 'login.dart'; // SESUAIKAN jika path berbeda
+import 'login.dart';
 
 // === THEME CONST BIAR KONSISTEN DENGAN LOGIN / REGISTER / POS ===
 const Color kBackgroundColor = Color(0xFFF3F6FD);
@@ -30,11 +30,25 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> loadCashierProfile() async {
-    final fetchedCashier = await CashierService().fetchCashierProfile();
-    setState(() {
-      cashier = fetchedCashier;
-      isLoading = false;
-    });
+    try {
+      final fetchedCashier = await CashierService().fetchCashierProfile();
+
+      if (!mounted) return;
+      setState(() {
+        cashier = fetchedCashier;
+        isLoading = false;
+      });
+    } catch (e) {
+      // ✅ kalau kena 401, paksa logout
+      if (!mounted) return;
+
+      await AuthService.logout();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+            (route) => false,
+      );
+    }
   }
 
   void _showSuccessMessage() {

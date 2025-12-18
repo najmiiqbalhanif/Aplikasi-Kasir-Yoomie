@@ -3,7 +3,8 @@ import 'package:flutter/cupertino.dart';
 
 import 'package:helloworld/presentation/pages/cartProvider.dart';
 import 'package:provider/provider.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'login.dart';
 import '../../models/Product.dart';
 import '../../models/CartItem.dart';
 import '../../services/ProductService.dart';
@@ -69,6 +70,21 @@ class _PoSPageState extends State<PoSPage>
     super.dispose();
   }
 
+  Future<void> _forceLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('cashierId');
+    await prefs.remove('cashierName');
+
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+    );
+  }
+
+
   /// Ambil data cart awal dari backend, isi ke CartProvider
   Future<void> _loadInitialCartFromServer() async {
     try {
@@ -95,12 +111,12 @@ class _PoSPageState extends State<PoSPage>
       // Rebuild PoSPage supaya Qty pada kartu ikut keisi
       setState(() {});
     } catch (e) {
+      if (e.toString().contains('UNAUTHORIZED')) {
+        await _forceLogout();
+        return;
+      }
       debugPrint('Error load initial cart in PoSPage: $e');
       if (!mounted) return;
-      // Optional: tampilkan snackbar kalau mau
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text('Gagal memuat keranjang: $e')),
-      // );
     }
   }
 
@@ -251,6 +267,11 @@ class _PoSPageState extends State<PoSPage>
         newQuantity,
       );
     } catch (e) {
+      if (e.toString().contains('UNAUTHORIZED')) {
+        await _forceLogout();
+        return;
+      }
+
       debugPrint('Error update cart: $e');
 
       if (!mounted) return;
@@ -265,9 +286,7 @@ class _PoSPageState extends State<PoSPage>
       setState(() {});
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal memperbarui keranjang. Coba lagi.'),
-        ),
+        const SnackBar(content: Text('Gagal memperbarui keranjang. Coba lagi.')),
       );
     }
   }
@@ -619,8 +638,14 @@ class _PoSPageState extends State<PoSPage>
                       child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(
-                      child: Text('Error: ${snapshot.error}'));
+                  final err = snapshot.error.toString();
+                  if (err.contains('UNAUTHORIZED')) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) async {
+                      await _forceLogout();
+                    });
+                    return const SizedBox.shrink();
+                  }
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
 
                 final products = snapshot.data ?? [];

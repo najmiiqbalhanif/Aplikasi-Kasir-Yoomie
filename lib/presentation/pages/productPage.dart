@@ -60,6 +60,16 @@ class _ProductPageState extends State<ProductPage> {
     fetchProductDetail();
   }
 
+  Future<void> _forceLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('cashierId');
+    await prefs.remove('cashierName');
+
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  }
+
   void fetchProductDetail() async {
     try {
       Product fetchedProduct =
@@ -79,7 +89,13 @@ class _ProductPageState extends State<ProductPage> {
         isLoading = false;
       });
     } catch (e) {
+      if (e.toString().contains('UNAUTHORIZED')) {
+        await _forceLogout();
+        return;
+      }
+
       print('Error fetching product: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });

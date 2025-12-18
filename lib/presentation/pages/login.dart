@@ -33,23 +33,23 @@ class _LoginPageState extends State<LoginPage> {
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
 
-      // pastikan tipenya int
       final int cashierId = responseData['id'];
       final String cashierFullname = responseData['fullName'];
+      final String token = responseData['token'];
+      print('TOKEN: $token');
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('cashierId', cashierId);
       await prefs.setString('cashierName', cashierFullname);
+      await prefs.setString('token', token); // ← WAJIB
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => MainLayout(
-            cashierId: cashierId,
-          ),
+          builder: (_) => MainLayout(cashierId: cashierId),
         ),
       );
-    } else {
+  } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Login gagal. Periksa email atau password.'),

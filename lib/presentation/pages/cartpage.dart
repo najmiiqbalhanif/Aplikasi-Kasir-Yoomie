@@ -53,6 +53,7 @@ class _CartPageState extends State<CartPage> {
       return cashierId;
     } catch (e) {
       if (mounted) {
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load cart data: ${e.toString()}')),
         );
