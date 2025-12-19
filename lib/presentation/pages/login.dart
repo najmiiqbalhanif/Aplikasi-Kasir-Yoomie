@@ -160,8 +160,8 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               child: Center(
                                 child: Image.asset(
-                                  'assets/images/logo.png',
-                                  height: 32,
+                                  'assets/images/logoYoomie.png',
+                                  height: 45,
                                 ),
                               ),
                             ),

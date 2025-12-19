@@ -218,8 +218,8 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                               child: Center(
                                 child: Image.asset(
-                                  'assets/images/logo.png',
-                                  height: 30,
+                                  'assets/images/logoYoomie.png',
+                                  height: 45,
                                 ),
                               ),
                             ),
