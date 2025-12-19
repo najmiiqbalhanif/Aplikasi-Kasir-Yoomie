@@ -636,7 +636,7 @@ class _CartPageState extends State<CartPage> {
               height: 80,
               color: kBackgroundColor,
               child: Image.network(
-                cartItem.product.photoUrl,
+                _resolveImageUrl(cartItem.product.photoUrl),
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.image_not_supported_outlined,
@@ -800,5 +800,27 @@ class _CartPageState extends State<CartPage> {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (match) => '${match[1]}.',
     );
+  }
+
+  String _resolveImageUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      print('IMAGE URL (FULL): $url');
+      return url;
+    }
+
+    if (url.contains('src/main/resources/static/storage')) {
+      url = url.split('src/main/resources/static/storage').last;
+    }
+
+    url = url.replaceAll('\\', '/');
+    url = url.replaceAll(' ', '%20');
+
+    if (!url.startsWith('/')) {
+      url = '/$url';
+    }
+
+    final fullUrl = 'http://10.0.2.2:8080$url';
+    print('IMAGE URL: $fullUrl');
+    return fullUrl;
   }
 }
