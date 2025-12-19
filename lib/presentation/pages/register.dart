@@ -29,7 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final pw = (value ?? '');
 
     if (pw.trim().isEmpty) return 'Password wajib diisi.';
-    if (pw.length < 8) return 'Password minimal 8 karakter.';
+    if (pw.length < 8) return 'Password minimal 8 karakter dan 1 karakter khusus.';
 
     // WAJIB ADA KARAKTER SPESIAL
     final hasSpecial = RegExp(r'[^A-Za-z0-9]').hasMatch(pw);
@@ -218,7 +218,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                               child: Center(
                                 child: Image.asset(
-                                  'assets/images/logoYoomie.png',
+                                  'assets/images/logoYoomiePutih.png',
                                   height: 45,
                                 ),
                               ),

@@ -160,7 +160,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               child: Center(
                                 child: Image.asset(
-                                  'assets/images/logoYoomie.png',
+                                  'assets/images/logoYoomiePutih.png',
                                   height: 45,
                                 ),
                               ),
@@ -324,51 +324,7 @@ class _LoginPageState extends State<LoginPage> {
 
                         const SizedBox(height: 10),
 
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Checkbox(
-                                  value: _rememberMe,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _rememberMe = value ?? false;
-                                    });
-                                  },
-                                  visualDensity: VisualDensity.compact,
-                                  materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                const Text(
-                                  'Remember me',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    color: textGrey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                // TODO: aksi forgot password (kalau nanti ada)
-                              },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text(
-                                'Forgot password?',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: primaryGradientEnd,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+
 
                         const SizedBox(height: 16),
 

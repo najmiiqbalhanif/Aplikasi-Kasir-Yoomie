@@ -555,12 +555,10 @@ class _PoSPageState extends State<PoSPage>
       backgroundColor: backgroundColor,
       body: Column(
         children: [
-          const SizedBox(height: 25),
-
           // ================== HEADER ==================
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 25, 20, 12),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [primaryGradientStart, primaryGradientEnd],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/transactionDTO.dart';
@@ -99,7 +100,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
       final dt = DateTime.parse(createdOn);
       return DateFormat('dd MMM yyyy • HH:mm', 'id_ID').format(dt);
     } catch (_) {
-      // fallback: ambil tanggal saja kalau format tidak sesuai
       return createdOn.split('T').first;
     }
   }
@@ -108,12 +108,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackgroundColor,
-      body: SafeArea(
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent, // biar gradient terlihat sampai atas
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark, // iOS
+        ),
         child: Column(
           children: [
             _buildHeader(),
             Expanded(
-              child: _buildBody(),
+              // tetap aman untuk bagian bawah (gesture bar / nav bar), tapi TOP tidak dipotong
+              child: SafeArea(
+                top: false,
+                child: _buildBody(),
+              ),
             ),
           ],
         ),
@@ -124,9 +133,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
   // ================= HEADER =================
 
   Widget _buildHeader() {
+    final double topInset = MediaQuery.of(context).padding.top;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, topInset , 20, 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
@@ -163,9 +174,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             ],
           ),
           IconButton(
-            onPressed: () {
-              _fetchTransactions();
-            },
+            onPressed: _fetchTransactions,
             icon: const Icon(
               Icons.refresh_rounded,
               color: Colors.white,
@@ -309,17 +318,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
         ],
       ),
       child: Theme(
-        // Hilangkan garis divider default ExpansionTile
         data: Theme.of(context).copyWith(
           dividerColor: Colors.transparent,
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
         ),
         child: ExpansionTile(
-          tilePadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          childrenPadding:
-          const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           title: Row(
             children: [
               Expanded(
@@ -346,8 +352,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
