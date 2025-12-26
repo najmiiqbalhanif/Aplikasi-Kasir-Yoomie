@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:helloworld/presentation/pages/cartProvider.dart';
 import '../../services/cartService.dart';
@@ -53,7 +54,6 @@ class _CartPageState extends State<CartPage> {
       return cashierId;
     } catch (e) {
       if (mounted) {
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load cart data: ${e.toString()}')),
         );
@@ -100,6 +100,13 @@ class _CartPageState extends State<CartPage> {
           builder: (context, cartProvider, child) {
             List<CartItem> cartItems = cartProvider.items;
             double totalPrice = cartProvider.totalPrice;
+
+            // ====== NEW: Item (jenis produk) & Qty (total quantity) ======
+            final int itemKinds = cartItems.length;
+            final int totalQty = cartItems.fold<int>(
+              0,
+                  (sum, item) => sum + item.quantity,
+            );
 
             if (cartItems.isEmpty) {
               return Scaffold(
@@ -165,64 +172,10 @@ class _CartPageState extends State<CartPage> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    kPrimaryGradientStart,
-                                    kPrimaryGradientEnd,
-                                  ],
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.shopping_cart_outlined,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "${cartItems.length} item dalam keranjang",
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "Total sementara: Rp ${_formatRupiah(totalPrice)}",
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: kTextGrey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
+
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -236,6 +189,7 @@ class _CartPageState extends State<CartPage> {
                         },
                       ),
                     ),
+
                     // Bagian total + tombol Checkout
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -255,45 +209,29 @@ class _CartPageState extends State<CartPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // ====== NEW: Item & Qty di atas Subtotal ======
                           Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: kBackgroundColor,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: const Text(
-                                  "Standard Shipping • Free",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: kTextGrey,
-                                  ),
-                                ),
-                              ),
+                              _buildInfoPill("Item", itemKinds.toString()),
+                              const SizedBox(width: 10),
+                              _buildInfoPill("Qty", totalQty.toString()),
                               const Spacer(),
-                              Text(
-                                "Subtotal: Rp ${_formatRupiah(totalPrice)}",
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: kTextGrey,
-                                ),
-                              ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
+
                           _buildTotalRow(
-                            'Estimated Total',
-                            "Rp ${_formatRupiah(totalPrice)} + Tax",
+                            'Subtotal:',
+                            "Rp ${_formatRupiah(totalPrice)}",
                             isBold: true,
                           ),
                           const SizedBox(height: 12),
+
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.zero, // biar padding diatur di Container dalam
+                                padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -321,7 +259,9 @@ class _CartPageState extends State<CartPage> {
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
                                   ),
-                                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(40),
+                                  ),
                                 ),
                                 child: Container(
                                   alignment: Alignment.center,
@@ -351,28 +291,133 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+  // ===== NEW: pill kecil untuk Item & Qty =====
+  Widget _buildInfoPill(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: kBackgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "$label: ",
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: kTextGrey,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: Colors.black87,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= APP BAR (PERSIS HEADER SEBELUMNYA) =================
   PreferredSizeWidget _buildGradientAppBar() {
-    return AppBar(
-      elevation: 0,
-      centerTitle: true,
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    const double radius = 24;
+    final double topInset = MediaQuery.of(context).padding.top;
+
+    const double contentHeight = 40;
+
+    return PreferredSize(
+      preferredSize: Size.fromHeight(topInset + contentHeight),
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(radius),
+              bottomRight: Radius.circular(radius),
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(20, topInset, 20, 16),
+          child: Row(
+            children: [
+              if (Navigator.of(context).canPop())
+                InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () => Navigator.of(context).maybePop(),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.22),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              if (Navigator.of(context).canPop()) const SizedBox(width: 12),
+
+              const Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cart',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Kelola item di keranjang Anda.',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _initializationFuture = _initializeCartData();
+                  });
+                },
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                ),
+                tooltip: 'Refresh',
+              ),
+            ],
           ),
         ),
       ),
-      backgroundColor: Colors.transparent,
-      title: const Text(
-        'Keranjang',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      iconTheme: const IconThemeData(color: Colors.white),
     );
   }
 
@@ -388,7 +433,9 @@ class _CartPageState extends State<CartPage> {
     final initial = (currentQuantity > maxQty) ? maxQty : currentQuantity;
 
     final FixedExtentScrollController scrollController =
-    FixedExtentScrollController(initialItem: (initial - 1).clamp(0, maxQty - 1));
+    FixedExtentScrollController(
+      initialItem: (initial - 1).clamp(0, maxQty - 1),
+    );
 
     int selectedQuantity = initial;
 
@@ -410,11 +457,12 @@ class _CartPageState extends State<CartPage> {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    Color(0xFF3B82F6), // biru kiri
-                    Color(0xFF4F46E5), // ungu kanan
+                    Color(0xFF3B82F6),
+                    Color(0xFF4F46E5),
                   ],
                 ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.18),
@@ -427,8 +475,6 @@ class _CartPageState extends State<CartPage> {
               child: Column(
                 children: [
                   const SizedBox(height: 10),
-
-                  // handle
                   Container(
                     width: 52,
                     height: 5,
@@ -437,10 +483,7 @@ class _CartPageState extends State<CartPage> {
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-
                   const SizedBox(height: 14),
-
-                  // Row: Hapus dari keranjang + tombol X di kanan
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -465,7 +508,7 @@ class _CartPageState extends State<CartPage> {
                                 children: [
                                   Icon(
                                     Icons.delete_outline_rounded,
-                                    color: Colors.red, // merah
+                                    color: Colors.red,
                                     size: 18,
                                   ),
                                   SizedBox(width: 10),
@@ -507,9 +550,6 @@ class _CartPageState extends State<CartPage> {
                       ],
                     ),
                   ),
-
-
-                  // Picker qty (ListWheel) + highlight glass putih
                   Expanded(
                     child: Stack(
                       alignment: Alignment.center,
@@ -521,7 +561,7 @@ class _CartPageState extends State<CartPage> {
                               height: itemHeight,
                               margin: const EdgeInsets.symmetric(horizontal: 24),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18), // glass
+                                color: Colors.white.withOpacity(0.18),
                                 borderRadius: BorderRadius.circular(30),
                                 border: Border.all(
                                   color: Colors.white.withOpacity(0),
@@ -569,8 +609,6 @@ class _CartPageState extends State<CartPage> {
                       ],
                     ),
                   ),
-
-                  // tombol selesai
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
                     child: SizedBox(
@@ -605,8 +643,6 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-
-
   // ==== ITEM CART BARU DENGAN CARD & LAYOUT LEBIH RAPI ====
   Widget _buildCartItem(BuildContext context, CartItem cartItem, int cashierId) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -628,7 +664,6 @@ class _CartPageState extends State<CartPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gambar Produk
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -646,12 +681,10 @@ class _CartPageState extends State<CartPage> {
             ),
           ),
           const SizedBox(width: 12),
-          // Detail Produk
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Nama + kategori
                 Text(
                   cartItem.product.name,
                   maxLines: 2,
@@ -669,20 +702,25 @@ class _CartPageState extends State<CartPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Qty + harga
                 Row(
                   children: [
                     GestureDetector(
                       onTap: () async {
                         final int maxQty = cartItem.product.stock;
 
-                        final int? selectedQuantity =
-                        await _showQuantityPicker(context, cartItem.quantity, maxQty);
+                        final int? selectedQuantity = await _showQuantityPicker(
+                          context,
+                          cartItem.quantity,
+                          maxQty,
+                        );
 
                         if (selectedQuantity != null) {
                           if (selectedQuantity > maxQty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Maksimal qty produk ini adalah $maxQty.')),
+                              SnackBar(
+                                content: Text(
+                                    'Maksimal qty produk ini adalah $maxQty.'),
+                              ),
                             );
                             return;
                           }
@@ -706,9 +744,14 @@ class _CartPageState extends State<CartPage> {
                           } else if (selectedQuantity != cartItem.quantity) {
                             try {
                               await _cartService.updateProductQuantity(
-                                  cashierId, cartItem.product.id!, selectedQuantity);
+                                cashierId,
+                                cartItem.product.id!,
+                                selectedQuantity,
+                              );
                               cartProvider.updateQuantity(
-                                  cartItem.product, selectedQuantity);
+                                cartItem.product,
+                                selectedQuantity,
+                              );
                             } catch (e) {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -725,7 +768,9 @@ class _CartPageState extends State<CartPage> {
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(color: kBackgroundColor),
@@ -804,6 +849,7 @@ class _CartPageState extends State<CartPage> {
 
   String _resolveImageUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
+      // ignore: avoid_print
       print('IMAGE URL (FULL): $url');
       return url;
     }
@@ -820,6 +866,7 @@ class _CartPageState extends State<CartPage> {
     }
 
     final fullUrl = 'http://10.0.2.2:8080$url';
+    // ignore: avoid_print
     print('IMAGE URL: $fullUrl');
     return fullUrl;
   }

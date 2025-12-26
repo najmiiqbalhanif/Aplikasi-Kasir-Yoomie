@@ -184,7 +184,7 @@ class _PoSPageState extends State<PoSPage>
 
     if (currentQty >= maxQty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Maksimal qty untuk produk ini adalah $maxQty.')),
+        SnackBar(content: Text('Qty dari produk ini hanya sisa $maxQty.')),
       );
       return;
     }
