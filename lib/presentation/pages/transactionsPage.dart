@@ -6,7 +6,7 @@ import '../../models/transactionDTO.dart';
 import '../../services/transactionService.dart';
 import 'login.dart';
 
-// Theme konsisten dengan halaman lain
+// Theme (consistent with other pages)
 const Color kBackgroundColor = Color(0xFFF3F6FD);
 const Color kPrimaryGradientStart = Color(0xFF3B82F6);
 const Color kPrimaryGradientEnd = Color(0xFF4F46E5);
@@ -67,7 +67,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         setState(() {
           isLoading = false;
           errorMessage =
-          "Cashier belum login. Silakan login untuk melihat riwayat transaksi.";
+          "You are not logged in as a cashier. Please sign in to view your transaction history.";
         });
         return;
       }
@@ -90,7 +90,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       if (!mounted) return;
       setState(() {
         isLoading = false;
-        errorMessage = 'Gagal memuat transaksi. Coba lagi beberapa saat lagi.';
+        errorMessage = 'Failed to load transactions. Please try again later.';
       });
     }
   }
@@ -110,15 +110,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
       backgroundColor: kBackgroundColor,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light.copyWith(
-          statusBarColor: Colors.transparent, // biar gradient terlihat sampai atas
+          statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark, // iOS
+          statusBarBrightness: Brightness.dark,
         ),
         child: Column(
           children: [
             _buildHeader(),
             Expanded(
-              // tetap aman untuk bagian bawah (gesture bar / nav bar), tapi TOP tidak dipotong
               child: SafeArea(
                 top: false,
                 child: _buildBody(),
@@ -137,7 +136,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topInset , 20, 16),
+      padding: EdgeInsets.fromLTRB(20, topInset, 20, 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
@@ -165,7 +164,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               ),
               SizedBox(height: 2),
               Text(
-                'Lihat riwayat transaksi kasir Anda.',
+                'View your cashier transaction history.',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
@@ -241,7 +240,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     ),
                   ),
                   child: const Text(
-                    "Coba lagi",
+                    "Try again",
                     style: TextStyle(fontSize: 13),
                   ),
                 ),
@@ -266,7 +265,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               ),
               SizedBox(height: 10),
               Text(
-                "Belum ada transaksi.",
+                "No transactions yet.",
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -274,7 +273,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               ),
               SizedBox(height: 4),
               Text(
-                "Transaksi yang kamu lakukan di PoS\nakan muncul di sini.",
+                "Transactions you make in PoS\nwill appear here.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,
@@ -397,7 +396,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Ringkasan item:',
+                'Item summary:',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

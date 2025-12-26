@@ -11,7 +11,7 @@ import '../../services/ProductService.dart';
 import '../../services/cartService.dart';
 
 class PoSPage extends StatefulWidget {
-  final int cashierId; // id kasir aktif
+  final int cashierId; // active cashier id
 
   const PoSPage({
     super.key,
@@ -34,8 +34,8 @@ class _PoSPageState extends State<PoSPage>
 
   final CartService _cartService = CartService();
 
-  /// key = value category di database
-  /// label = teks yang ditampilkan di UI
+  /// key = category value in the database
+  /// label = text shown in the UI
   final List<Map<String, String>> _categories = [
     {'key': 'makanan', 'label': 'Makanan'},
     {'key': 'minuman', 'label': 'Minuman'},
@@ -46,7 +46,7 @@ class _PoSPageState extends State<PoSPage>
     {'key': 'alat_tulis', 'label': 'Alat Tulis'},
   ];
 
-  // ===== STATE UNTUK SEARCH =====
+  // ===== SEARCH STATE =====
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isSearching = false;
@@ -59,7 +59,7 @@ class _PoSPageState extends State<PoSPage>
     _tabController =
         TabController(length: _categories.length, vsync: this);
 
-    // Load isi cart dari backend -> masuk ke CartProvider
+    // Load cart contents from backend -> store into CartProvider
     _loadInitialCartFromServer();
   }
 
@@ -84,14 +84,13 @@ class _PoSPageState extends State<PoSPage>
     );
   }
 
-
-  /// Ambil data cart awal dari backend, isi ke CartProvider
+  /// Fetch initial cart data from backend and fill CartProvider
   Future<void> _loadInitialCartFromServer() async {
     try {
       final cartProvider =
       Provider.of<CartProvider>(context, listen: false);
 
-      // Kalau provider sudah terisi (misal sudah di-load dari halaman lain), jangan timpa.
+      // If the provider is already filled (e.g., loaded from another page), do not overwrite.
       if (cartProvider.items.isNotEmpty) return;
 
       final List<CartItem> initialCartItems =
@@ -99,7 +98,7 @@ class _PoSPageState extends State<PoSPage>
 
       if (!mounted) return;
 
-      // Cek lagi setelah network (jaga-jaga kalau sudah ada perubahan)
+      // Double-check after the network call (in case changes happened)
       if (cartProvider.items.isNotEmpty) return;
 
       cartProvider.clearCart();
@@ -108,7 +107,7 @@ class _PoSPageState extends State<PoSPage>
         cartProvider.addExistingItem(item.product, item.quantity);
       }
 
-      // Rebuild PoSPage supaya Qty pada kartu ikut keisi
+      // Rebuild PoSPage so Qty on the cards gets updated
       setState(() {});
     } catch (e) {
       if (e.toString().contains('UNAUTHORIZED')) {
@@ -135,7 +134,7 @@ class _PoSPageState extends State<PoSPage>
 
     if (query.isEmpty || _allProducts.isEmpty) return;
 
-    // Cari produk pertama yang cocok di SEMUA kategori
+    // Find the first matching product across ALL categories
     Product? firstMatch;
     for (final p in _allProducts) {
       if (_matchesQuery(p, query)) {
@@ -153,7 +152,7 @@ class _PoSPageState extends State<PoSPage>
     }
   }
 
-  /// Ambil qty terkini untuk sebuah product dari CartProvider
+  /// Get latest qty for a product from CartProvider
   int _getCurrentQtyFromProvider(Product product) {
     if (product.id == null) return 0;
     final cartProvider =
@@ -166,9 +165,9 @@ class _PoSPageState extends State<PoSPage>
     return matched.first.quantity;
   }
 
-  /// Tap pada kartu produk:
-  /// - Kalau belum ada di cart => qty = 1
-  /// - Kalau sudah ada        => qty + 1
+  /// Tap on product card:
+  /// - If not in cart => qty = 1
+  /// - If already in cart => qty + 1
   void _onProductTap(Product product) {
     if (product.id == null) return;
 
@@ -177,14 +176,14 @@ class _PoSPageState extends State<PoSPage>
 
     if (maxQty <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stok habis.')),
+        const SnackBar(content: Text('Out of stock.')),
       );
       return;
     }
 
     if (currentQty >= maxQty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Qty dari produk ini hanya sisa $maxQty.')),
+        SnackBar(content: Text('Only $maxQty left for this product.')),
       );
       return;
     }
@@ -192,19 +191,19 @@ class _PoSPageState extends State<PoSPage>
     _updateCartQuantity(product, currentQty + 1);
   }
 
-  /// Update qty di CartProvider + sinkron ke backend via CartService.
+  /// Update qty in CartProvider + sync to backend via CartService.
   Future<void> _updateCartQuantity(Product product, int newQuantity) async {
     final maxQty = product.stock;
     if (maxQty <= 0 && newQuantity > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stok habis.')),
+        const SnackBar(content: Text('Out of stock.')),
       );
       return;
     }
     if (newQuantity > maxQty) {
       newQuantity = maxQty;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Qty disesuaikan ke stok maksimal: $maxQty.')),
+        SnackBar(content: Text('Quantity adjusted to max stock: $maxQty.')),
       );
     }
 
@@ -221,25 +220,25 @@ class _PoSPageState extends State<PoSPage>
 
     final int previousQty = _getCurrentQtyFromProvider(product);
 
-    // ====== Optimistic update: update provider dulu ======
+    // ====== Optimistic update: update provider first ======
     if (newQuantity <= 0) {
-      // hapus item
+      // remove item
       cartProvider.removeItem(product);
     } else if (previousQty == 0) {
-      // item baru
+      // new item
       cartProvider.addExistingItem(product, newQuantity);
     } else {
-      // update qty existing
+      // update existing qty
       cartProvider.updateQuantity(product, newQuantity);
     }
 
-    // supaya PoSPage rebuild juga (walau sebenarnya provider sudah notify)
+    // Ensure PoSPage rebuilds as well (even though provider notifies)
     if (mounted) {
       setState(() {});
     }
 
     try {
-      // ====== Sinkron ke backend ======
+      // ====== Sync to backend ======
       if (newQuantity <= 0) {
         if (previousQty > 0) {
           await _cartService.removeProductFromCart(cashierId, productId);
@@ -248,19 +247,18 @@ class _PoSPageState extends State<PoSPage>
       }
 
       if (previousQty == 0 && newQuantity == 1) {
-        // Dari 0 ke 1 => pakai endpoint add
+        // From 0 to 1 => use add endpoint
         await _cartService.addProductToCart(cashierId, productId);
         return;
       }
 
       if (newQuantity == previousQty - 1 && newQuantity >= 1) {
-        // Turun 1 => pakai endpoint decrease
+        // Decrease by 1 => use decrease endpoint
         await _cartService.decreaseProductQuantity(cashierId, productId);
         return;
       }
 
-      // Selain kasus di atas (misalnya loncat 1 -> 5),
-      // pakai endpoint updateQuantity
+      // Otherwise (e.g., jump 1 -> 5), use updateQuantity endpoint
       await _cartService.updateProductQuantity(
         cashierId,
         productId,
@@ -276,7 +274,7 @@ class _PoSPageState extends State<PoSPage>
 
       if (!mounted) return;
 
-      // ==== Rollback provider ke nilai sebelumnya ====
+      // ==== Rollback provider to previous value ====
       if (previousQty <= 0) {
         cartProvider.removeItem(product);
       } else {
@@ -286,7 +284,7 @@ class _PoSPageState extends State<PoSPage>
       setState(() {});
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal memperbarui keranjang. Coba lagi.')),
+        const SnackBar(content: Text('Failed to update cart. Please try again.')),
       );
     }
   }
@@ -294,15 +292,15 @@ class _PoSPageState extends State<PoSPage>
   /// Bottom sheet qty (Cupertino style)
   void _showQuantityBottomSheet(Product product) {
     if (product.id == null) {
-      debugPrint('Product id null, tidak bisa show bottom sheet qty');
+      debugPrint('Product id null, cannot show bottom sheet qty');
       return;
     }
 
-    final int maxQty = product.stock; // <-- dari DB
+    final int maxQty = product.stock; // <-- from DB
 
     if (maxQty <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stok habis.')),
+        const SnackBar(content: Text('Out of stock.')),
       );
       return;
     }
@@ -327,7 +325,7 @@ class _PoSPageState extends State<PoSPage>
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             final height = MediaQuery.of(ctx).size.height;
-            const double itemHeight = 46; // sama persis dengan desain target
+            const double itemHeight = 46; // same as target design
 
             return Container(
               width: double.infinity,
@@ -337,8 +335,8 @@ class _PoSPageState extends State<PoSPage>
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    Color(0xFF3B82F6), // biru (kiri)
-                    Color(0xFF4F46E5), // ungu (kanan)
+                    Color(0xFF3B82F6), // blue (left)
+                    Color(0xFF4F46E5), // purple (right)
                   ],
                 ),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -367,7 +365,7 @@ class _PoSPageState extends State<PoSPage>
 
                   const SizedBox(height: 14),
 
-                  // Row: Hapus dari keranjang + tombol X di kanan
+                  // Row: Remove from cart + X button on the right
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -400,7 +398,7 @@ class _PoSPageState extends State<PoSPage>
                                   ),
                                   SizedBox(width: 10),
                                   Text(
-                                    'Hapus dari keranjang',
+                                    'Remove from cart',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
@@ -440,7 +438,7 @@ class _PoSPageState extends State<PoSPage>
 
                   const SizedBox(height: 14),
 
-                  // divider (tetap seperti cartpage.dart kamu)
+                  // divider (same as your cartpage.dart)
                   Container(
                     height: 1,
                     margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -449,7 +447,7 @@ class _PoSPageState extends State<PoSPage>
 
                   const SizedBox(height: 10),
 
-                  // picker qty (DESAIN SAMA PERSIS DENGAN _showQuantityPicker)
+                  // qty picker
                   Expanded(
                     child: Stack(
                       alignment: Alignment.center,
@@ -461,10 +459,10 @@ class _PoSPageState extends State<PoSPage>
                               height: itemHeight,
                               margin: const EdgeInsets.symmetric(horizontal: 24),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18), // glass
+                                color: Colors.white.withOpacity(0.18),
                                 borderRadius: BorderRadius.circular(30),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0), // sama persis
+                                  color: Colors.white.withOpacity(0),
                                 ),
                               ),
                             ),
@@ -475,9 +473,9 @@ class _PoSPageState extends State<PoSPage>
                           itemExtent: itemHeight,
                           perspective: 0.003,
                           diameterRatio: 1.6,
-                          magnification: 1.10, // sama persis
-                          useMagnifier: true,  // sama persis
-                          squeeze: 1.05,       // sama persis
+                          magnification: 1.10,
+                          useMagnifier: true,
+                          squeeze: 1.05,
                           physics: const FixedExtentScrollPhysics(),
                           onSelectedItemChanged: (index) {
                             final selectedQty = index + 1;
@@ -512,7 +510,7 @@ class _PoSPageState extends State<PoSPage>
                     ),
                   ),
 
-                  // tombol selesai
+                  // done button
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
                     child: SizedBox(
@@ -529,7 +527,7 @@ class _PoSPageState extends State<PoSPage>
                         ),
                         onPressed: () => Navigator.of(ctx).pop(),
                         child: const Text(
-                          'Selesai',
+                          'Done',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -545,8 +543,6 @@ class _PoSPageState extends State<PoSPage>
         );
       },
     );
-
-
   }
 
   @override
@@ -576,7 +572,7 @@ class _PoSPageState extends State<PoSPage>
                 _isSearching ? _buildSearchRow() : _buildTitleRow(),
                 const SizedBox(height: 14),
 
-                // ================== TAB KATEGORI ==================
+                // ================== CATEGORY TABS ==================
                 Container(
                   height: 40,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -609,8 +605,7 @@ class _PoSPageState extends State<PoSPage>
                         .map(
                           (cat) => Tab(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 18),
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
                           child: Text(
                             cat['label']!,
                             textAlign: TextAlign.center,
@@ -625,15 +620,13 @@ class _PoSPageState extends State<PoSPage>
             ),
           ),
 
-          // ================== ISI PRODUK ==================
+          // ================== PRODUCT CONTENT ==================
           Expanded(
             child: FutureBuilder<List<Product>>(
               future: _futureProducts,
               builder: (context, snapshot) {
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
                   final err = snapshot.error.toString();
@@ -654,9 +647,8 @@ class _PoSPageState extends State<PoSPage>
                   children: _categories.map((category) {
                     final key = category['key']!;
 
-                    final inCategory = products
-                        .where((p) => p.category == key)
-                        .toList();
+                    final inCategory =
+                    products.where((p) => p.category == key).toList();
 
                     final displayProducts = _searchQuery.isEmpty
                         ? inCategory
@@ -694,7 +686,7 @@ class _PoSPageState extends State<PoSPage>
             ),
             SizedBox(height: 2),
             Text(
-              'Pilih produk dan tambahkan ke keranjang.',
+              'Select products and add them to your cart.',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 12,
@@ -748,7 +740,7 @@ class _PoSPageState extends State<PoSPage>
                     size: 18,
                     color: primaryGradientEnd,
                   ),
-                  hintText: 'Cari produk...',
+                  hintText: 'Search products...',
                   hintStyle: TextStyle(
                     fontSize: 16,
                     color: textGrey,
@@ -782,14 +774,14 @@ class _PoSPageState extends State<PoSPage>
     );
   }
 
-  // ================== GRID PRODUK RESPONSIF ==================
+  // ================== RESPONSIVE PRODUCT GRID ==================
   Widget _buildProductGrid(List<Product> products) {
     if (products.isEmpty) {
       return Center(
         child: Text(
           _searchQuery.isEmpty
-              ? 'Belum ada produk di kategori ini.'
-              : 'Tidak ada produk yang cocok dengan pencarian.',
+              ? 'No products in this category yet.'
+              : 'No products match your search.',
           style: const TextStyle(color: textGrey),
         ),
       );
@@ -814,7 +806,7 @@ class _PoSPageState extends State<PoSPage>
       childAspectRatio = 0.7;
     }
 
-    // Ambil state cart dari provider (listen: true supaya realtime)
+    // Get cart state from provider (listen: true for realtime)
     final cartProvider = Provider.of<CartProvider>(context);
     final Map<int, int> quantityMap = {};
     for (final item in cartProvider.items) {
@@ -834,9 +826,7 @@ class _PoSPageState extends State<PoSPage>
       itemCount: products.length,
       itemBuilder: (context, index) {
         final product = products[index];
-        final qty = (product.id == null)
-            ? 0
-            : (quantityMap[product.id!] ?? 0);
+        final qty = (product.id == null) ? 0 : (quantityMap[product.id!] ?? 0);
 
         return ProductItem(
           product: product,
@@ -849,7 +839,7 @@ class _PoSPageState extends State<PoSPage>
   }
 }
 
-// ================== KARTU PRODUK ==================
+// ================== PRODUCT CARD ==================
 class ProductItem extends StatelessWidget {
   final Product product;
   final int quantity;
@@ -867,8 +857,7 @@ class ProductItem extends StatelessWidget {
   String _formatRupiah(double value) {
     final text = value.toStringAsFixed(0);
     final reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
-    final formatted =
-    text.replaceAllMapped(reg, (match) => '${match[1]}.');
+    final formatted = text.replaceAllMapped(reg, (match) => '${match[1]}.');
     return 'Rp $formatted';
   }
 
@@ -917,15 +906,13 @@ class ProductItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               child: AspectRatio(
                 aspectRatio: 1,
                 child: Image.network(
                   _resolveImageUrl(product.photoUrl),
                   fit: BoxFit.cover,
-                  errorBuilder:
-                      (context, error, stackTrace) =>
+                  errorBuilder: (context, error, stackTrace) =>
                   const Center(child: Icon(Icons.broken_image)),
                 ),
               ),

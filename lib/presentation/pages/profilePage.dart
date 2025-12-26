@@ -3,7 +3,6 @@ import '../../services/CashierService.dart';
 import '../../services/authService.dart';
 import '../../models/cashier.dart';
 import 'editProfilePage.dart';
-import 'FavoriteProductsPage.dart';
 import 'login.dart';
 
 // === THEME CONST BIAR KONSISTEN DENGAN LOGIN / REGISTER / POS ===
@@ -39,7 +38,7 @@ class _ProfilePageState extends State<ProfilePage> {
         isLoading = false;
       });
     } catch (e) {
-      // ✅ kalau kena 401, paksa logout
+      // ✅ if 401, force logout
       if (!mounted) return;
 
       await AuthService.logout();
@@ -54,33 +53,33 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showSuccessMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Profil berhasil diperbarui'),
+        content: Text('Profile updated successfully.'),
         backgroundColor: Colors.green,
       ),
     );
   }
 
-  // === KONFIRMASI + LOGOUT ===
+  // === CONFIRM + LOGOUT ===
   Future<void> _confirmLogout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Logout'),
+          title: const Text('Sign out'),
           content: const Text(
-            'Apakah Anda yakin ingin keluar dari akun kasir Yoomie?',
+            'Are you sure you want to sign out from your Yoomie cashier account?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Batal'),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,
               ),
-              child: const Text('Logout'),
+              child: const Text('Sign out'),
             ),
           ],
         );
@@ -89,12 +88,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (shouldLogout != true) return;
 
-    // Panggil service logout (clear SharedPreferences + hit API /logout)
+    // Call logout service (clear SharedPreferences + hit API /logout)
     await AuthService.logout();
 
     if (!mounted) return;
 
-    // Arahkan ke LoginPage dan hapus semua route sebelumnya
+    // Navigate to LoginPage and remove previous routes
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -110,19 +109,24 @@ class _ProfilePageState extends State<ProfilePage> {
         child: isLoading || cashier == null
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeaderCard(),
               const SizedBox(height: 16),
-              _buildQuickActionsCard(),
-              const SizedBox(height: 16),
+
+              // ✅ REMOVED (as requested): Quick Actions card
+              // _buildQuickActionsCard(),
+              // const SizedBox(height: 16),
+
               _buildAccountInfoCard(),
-              const SizedBox(height: 16),
-              _buildTipsCard(),
               const SizedBox(height: 24),
+
+              // ✅ REMOVED (as requested): Tips card
+              // _buildTipsCard(),
+              // const SizedBox(height: 24),
+
               _buildLogoutButton(),
               const SizedBox(height: 8),
             ],
@@ -132,7 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // === WIDGET: HEADER GRADIENT DENGAN AVATAR & EDIT BUTTON ===
+  // === HEADER GRADIENT WITH AVATAR & EDIT BUTTON ===
   Widget _buildHeaderCard() {
     return Container(
       width: double.infinity,
@@ -165,7 +169,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 : null,
           ),
           const SizedBox(width: 16),
-          // Nama + username
+
+          // Name + username
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +197,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Kelola profil dan preferensi kasir Anda.',
+                  'Manage your cashier profile and preferences.',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
@@ -202,7 +207,8 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(width: 8),
-          // Tombol Edit
+
+          // Edit button
           TextButton(
             onPressed: () async {
               final result = await Navigator.push(
@@ -219,8 +225,7 @@ class _ProfilePageState extends State<ProfilePage> {
               }
             },
             style: TextButton.styleFrom(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               backgroundColor: Colors.white,
               foregroundColor: kPrimaryGradientEnd,
               shape: RoundedRectangleBorder(
@@ -240,45 +245,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // === WIDGET: QUICK ACTIONS (FAVORITE, ACCESS, EVENT, SETTINGS) ===
-  Widget _buildQuickActionsCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _MenuItem(
-            icon: Icons.favorite,
-            label: 'Favorite',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FavoriteProductsPage(),
-                ),
-              );
-            },
-          ),
-          const _MenuItem(icon: Icons.qr_code, label: 'Access'),
-          const _MenuItem(icon: Icons.event, label: 'Event'),
-          const _MenuItem(icon: Icons.settings, label: 'Settings'),
-        ],
-      ),
-    );
-  }
-
-  // === WIDGET: RINGKASAN AKUN KASIR ===
+  // === ACCOUNT SUMMARY CARD ===
   Widget _buildAccountInfoCard() {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
@@ -309,21 +276,21 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Akun kasir Yoomie',
+                Text(
+                  'Yoomie Cashier Account',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
-                  'Gunakan akun ini untuk mengelola transaksi dan keranjang di kasir.',
-                  style: const TextStyle(
+                  'Use this account to manage orders, cart, and transactions securely.',
+                  style: TextStyle(
                     fontSize: 12,
                     color: kTextGrey,
                     height: 1.4,
@@ -337,54 +304,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // === WIDGET: CARD TIPS / INFO ===
-  Widget _buildTipsCard() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: const ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: CircleAvatar(
-          radius: 20,
-          backgroundColor: Color(0xFFE0ECFF),
-          child: Icon(
-            Icons.lightbulb_outline,
-            color: kPrimaryGradientEnd,
-          ),
-        ),
-        title: Text(
-          'Tips untuk kasir Yoomie',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          'Cek transaksi terbaru dan pantau performa penjualan harianmu.',
-          style: TextStyle(
-            fontSize: 12,
-            color: kTextGrey,
-          ),
-        ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: kTextGrey,
-        ),
-      ),
-    );
-  }
-
-  // === WIDGET: TOMBOL LOGOUT ===
+  // === LOGOUT BUTTON ===
   Widget _buildLogoutButton() {
     return GestureDetector(
       onTap: _confirmLogout,
@@ -408,7 +328,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         child: const Center(
           child: Text(
-            'Logout',
+            'Sign out',
             style: TextStyle(
               color: Colors.white,
               fontSize: 15,
@@ -421,7 +341,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-// === QUICK ACTION ITEM (ICON + LABEL) ===
+// ======================================================
+// BELOW: kept as-is (not used anymore) to avoid breaking code
+// You can delete them later if you want cleaner file.
+// ======================================================
+
+// === QUICK ACTIONS (unused now) ===
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String label;

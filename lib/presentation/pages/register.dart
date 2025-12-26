@@ -11,7 +11,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // === FORM KEY untuk validasi ===
+  // Form key for validation
   final _formKey = GlobalKey<FormState>();
   AutovalidateMode _autoValidateMode = AutovalidateMode.disabled;
 
@@ -24,16 +24,15 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _obscurePassword = true;
 
-  // === VALIDASI PASSWORD (minimal 8 karakter) ===
+  // Password rules: min 8 chars + at least 1 special character
   String? _passwordValidator(String? value) {
     final pw = (value ?? '');
 
-    if (pw.trim().isEmpty) return 'Password wajib diisi.';
-    if (pw.length < 8) return 'Password minimal 8 karakter dan 1 karakter khusus.';
+    if (pw.trim().isEmpty) return 'Password is required.';
+    if (pw.length < 8) return 'Password must be at least 8 characters long.';
 
-    // WAJIB ADA KARAKTER SPESIAL
     final hasSpecial = RegExp(r'[^A-Za-z0-9]').hasMatch(pw);
-    if (!hasSpecial) return 'Password harus mengandung minimal 1 karakter.';
+    if (!hasSpecial) return 'Password must include at least 1 special character.';
 
     return null;
   }
@@ -45,7 +44,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> registerCashier() async {
     setState(() {
-      // setelah user klik submit, validasi langsung aktif untuk semua field
+      // After user taps submit, enable autovalidation
       _autoValidateMode = AutovalidateMode.onUserInteraction;
     });
 
@@ -64,7 +63,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Register berhasil! Silakan login.')),
+        const SnackBar(content: Text('Registration successful! Please sign in.')),
       );
       Navigator.pushReplacement(
         context,
@@ -72,7 +71,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Register gagal. Coba lagi.')),
+        const SnackBar(content: Text('Registration failed. Please try again.')),
       );
     }
   }
@@ -106,7 +105,7 @@ class _RegisterPageState extends State<RegisterPage> {
         fillColor: const Color(0xFFF3F4F6),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
 
-        // normal border (tidak terlihat)
+        // Normal borders (hidden)
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(999),
           borderSide: BorderSide.none,
@@ -116,7 +115,7 @@ class _RegisterPageState extends State<RegisterPage> {
           borderSide: BorderSide.none,
         ),
 
-        // ERROR border merah (sesuai yang kamu mau)
+        // Error borders (red)
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(999),
           borderSide: const BorderSide(color: Colors.red, width: 1.4),
@@ -157,7 +156,7 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // PANEL GRADASI
+                  // GRADIENT HEADER PANEL
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
@@ -177,7 +176,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.18),
                             borderRadius: BorderRadius.circular(999),
@@ -226,7 +227,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             const SizedBox(width: 14),
                             const Expanded(
                               child: Text(
-                                'Buat akun kasir baru dan mulai kelola transaksi di Yoomie.',
+                                'Create a new cashier account and start managing transactions in Yoomie.',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -239,7 +240,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Daftarkan kasir agar dapat login ke aplikasi dan mengelola penjualan dengan aman.',
+                          'Register a cashier so they can sign in and manage sales securely.',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
@@ -250,7 +251,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
 
-                  // FORM REGISTER
+                  // REGISTER FORM
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 10, 24, 16),
                     child: Form(
@@ -268,7 +269,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           const SizedBox(height: 2),
                           const Text(
-                            'Isi data kasir untuk membuat akun baru.',
+                            'Fill in the cashier details to create a new account.',
                             style: TextStyle(
                               fontSize: 12.5,
                               color: textGrey,
@@ -289,7 +290,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (_) => const LoginPage()),
+                                      builder: (_) => const LoginPage(),
+                                    ),
                                   );
                                 },
                                 child: const Text(
@@ -306,7 +308,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           const SizedBox(height: 10),
 
                           const Text(
-                            'Nama lengkap',
+                            'Full name',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
@@ -316,18 +318,17 @@ class _RegisterPageState extends State<RegisterPage> {
                           TextFormField(
                             controller: fullNameController,
                             decoration: pillDecoration(
-                              hintText: 'Nama lengkap kasir',
+                              hintText: 'Cashier full name',
                             ),
-                            validator: (v) =>
-                            (v == null || v.trim().isEmpty)
-                                ? 'Nama lengkap wajib diisi.'
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Full name is required.'
                                 : null,
                           ),
 
                           const SizedBox(height: 10),
 
                           const Text(
-                            'Nama kasir (username)',
+                            'Cashier username',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
@@ -337,11 +338,10 @@ class _RegisterPageState extends State<RegisterPage> {
                           TextFormField(
                             controller: cashierNameController,
                             decoration: pillDecoration(
-                              hintText: 'Contoh: kasir1, kasir_toko',
+                              hintText: 'Example: cashier1, cashier_store',
                             ),
-                            validator: (v) =>
-                            (v == null || v.trim().isEmpty)
-                                ? 'Nama kasir wajib diisi.'
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Username is required.'
                                 : null,
                           ),
 
@@ -359,13 +359,14 @@ class _RegisterPageState extends State<RegisterPage> {
                             controller: emailController,
                             keyboardType: TextInputType.emailAddress,
                             decoration: pillDecoration(
-                              hintText: 'kasir@tokoanda.com',
+                              hintText: 'cashier@yourstore.com',
                             ),
                             validator: (v) {
                               final val = (v ?? '').trim();
-                              if (val.isEmpty) return 'Email wajib diisi.';
-                              final ok = RegExp(r'^\S+@\S+\.\S+$').hasMatch(val);
-                              if (!ok) return 'Format email tidak valid.';
+                              if (val.isEmpty) return 'Email is required.';
+                              final ok =
+                              RegExp(r'^\S+@\S+\.\S+$').hasMatch(val);
+                              if (!ok) return 'Please enter a valid email address.';
                               return null;
                             },
                           ),
@@ -381,21 +382,17 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           const SizedBox(height: 4),
 
-                          // === PASSWORD (border merah + icon error ketika invalid) ===
+                          // PASSWORD FIELD (red border + error icon when invalid)
                           TextFormField(
                             controller: passwordController,
                             obscureText: _obscurePassword,
-                            onChanged: (_) {
-                              // biar icon/error berubah realtime
-                              setState(() {});
-                            },
+                            onChanged: (_) => setState(() {}),
                             validator: _passwordValidator,
                             decoration: pillDecoration(
-                              hintText: 'Buat password',
+                              hintText: 'Create a password',
                               suffixIcon: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // icon merah (!) muncul kalau invalid
                                   if (_autoValidateMode ==
                                       AutovalidateMode.onUserInteraction &&
                                       passwordController.text.isNotEmpty &&
@@ -408,7 +405,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                         size: 20,
                                       ),
                                     ),
-
                                   IconButton(
                                     icon: Icon(
                                       _obscurePassword
@@ -469,7 +465,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                           const Center(
                             child: Text(
-                              'Dengan membuat akun, Anda menyetujui ketentuan penggunaan Yoomie.',
+                              'By creating an account, you agree to Yoomie\'s terms of use.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 11,

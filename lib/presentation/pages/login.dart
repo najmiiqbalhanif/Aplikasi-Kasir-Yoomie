@@ -17,42 +17,66 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _rememberMe = false; // untuk tampilan checkbox
+  bool _rememberMe = false; // for checkbox UI (if you use it later)
 
   Future<void> loginCashier() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    final url = Uri.parse('http://10.0.2.2:8080/api/auth/login');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-
-      final int cashierId = responseData['id'];
-      final String cashierFullname = responseData['fullName'];
-      final String token = responseData['token'];
-      print('TOKEN: $token');
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('cashierId', cashierId);
-      await prefs.setString('cashierName', cashierFullname);
-      await prefs.setString('token', token); // ← WAJIB
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MainLayout(cashierId: cashierId),
-        ),
-      );
-  } else {
+    // Basic validation
+    if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Login gagal. Periksa email atau password.'),
+          content: Text('Please enter your email and password.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final url = Uri.parse('http://10.0.2.2:8080/api/auth/login');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        final int cashierId = responseData['id'];
+        final String cashierFullname = responseData['fullName'];
+        final String token = responseData['token'];
+        // ignore: avoid_print
+        print('TOKEN: $token');
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('cashierId', cashierId);
+        await prefs.setString('cashierName', cashierFullname);
+        await prefs.setString('token', token); // REQUIRED
+
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MainLayout(cashierId: cashierId),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login failed. Please check your email or password.'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to connect. Please try again.'),
         ),
       );
     }
@@ -67,7 +91,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    const backgroundColor = Color(0xFFF3F6FD); // mirip web
+    const backgroundColor = Color(0xFFF3F6FD);
     const textGrey = Color(0xFF6B7280);
     const primaryGradientStart = Color(0xFF3B82F6);
     const primaryGradientEnd = Color(0xFF4F46E5);
@@ -96,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // PANEL GRADASI (header, pengganti panel biru di web)
+                  // GRADIENT HEADER PANEL
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
@@ -114,10 +138,12 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // pill "Yoomie Cashier"
+                        // "Yoomie Cashier" pill
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.18),
                             borderRadius: BorderRadius.circular(999),
@@ -150,7 +176,7 @@ class _LoginPageState extends State<LoginPage> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // logo
+                            // Logo
                             Container(
                               width: 56,
                               height: 56,
@@ -168,7 +194,7 @@ class _LoginPageState extends State<LoginPage> {
                             const SizedBox(width: 16),
                             const Expanded(
                               child: Text(
-                                'Kontrol kasir Yoomie langsung dari aplikasi.',
+                                'Manage your Yoomie cashier operations directly from the app.',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -181,7 +207,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 10),
                         const Text(
-                          'Akses transaksi dan kelola penjualan dari perangkat kasir dengan aman.',
+                          'Access transactions and manage sales securely from your cashier device.',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12.5,
@@ -192,15 +218,14 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                  // FORM LOGIN
+                  // LOGIN FORM
                   Padding(
-                    padding:
-                    const EdgeInsets.fromLTRB(24, 24, 24, 20), // di dalam card
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Cashier Login',
+                          'Cashier Sign In',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
@@ -208,7 +233,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'Masuk dengan akun kasir Yoomie Anda.',
+                          'Sign in with your Yoomie cashier account.',
                           style: TextStyle(
                             fontSize: 13,
                             color: textGrey,
@@ -258,7 +283,7 @@ class _LoginPageState extends State<LoginPage> {
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            hintText: 'admin@tokoanda.com',
+                            hintText: 'admin@yourstore.com',
                             hintStyle: const TextStyle(
                               fontSize: 13,
                               color: textGrey,
@@ -290,7 +315,7 @@ class _LoginPageState extends State<LoginPage> {
                           controller: passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            hintText: 'Masukkan password',
+                            hintText: 'Enter your password',
                             hintStyle: const TextStyle(
                               fontSize: 13,
                               color: textGrey,
@@ -322,13 +347,9 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
 
-                        const SizedBox(height: 10),
-
-
-
                         const SizedBox(height: 16),
 
-                        // Tombol gradasi
+                        // Gradient button
                         GestureDetector(
                           onTap: loginCashier,
                           child: Container(

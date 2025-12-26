@@ -11,6 +11,11 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import '../../services/authHeader.dart';
 
+// === THEME CONSISTENT (Yoomie) ===
+const Color kBackgroundColor = Color(0xFFF3F6FD);
+const Color kPrimaryGradientStart = Color(0xFF3B82F6);
+const Color kPrimaryGradientEnd = Color(0xFF4F46E5);
+const Color kTextGrey = Color(0xFF6B7280);
 
 class CheckoutPage extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -36,7 +41,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // Transfer note (optional)
   final TextEditingController _transferNoteController = TextEditingController();
 
-  // Metode pembayaran:
+  // Payment method:
   // "cash" | "mandiri" | "bca"
   String _selectedPaymentMethod = 'cash';
 
@@ -45,22 +50,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   final NumberFormat _rupiah = NumberFormat.currency(
     locale: 'id_ID',
-    symbol: 'Rp. ',
+    symbol: 'Rp ',
     decimalDigits: 0,
   );
 
-  // preset cash yang dipilih (0 = none/custom)
+  // ✅ formatter untuk angka input manual (1.000.000)
+  final NumberFormat _thousand = NumberFormat.decimalPattern('id_ID');
+
+  // preset cash selected (0 = none/custom)
   int _selectedCashPreset = 0;
 
-  // Ubah sesuai kebutuhan (10rb / 5rb / 50rb, dsb.)
-  static const int _cashRoundingMultiple = 10000;
+  // ✅ cash rounding preset (angka “terdekat” di atasnya)
+  // contoh: 1.130.000 -> 1.150.000, 1.170.000 -> 1.200.000
+  static const int _cashRoundingMultiple = 50000;
 
   @override
   void initState() {
     super.initState();
     _loadCashierData();
 
-    // Default: pilih nominal pas (tombol kiri)
+    // Default: cash + exact amount
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _selectedPaymentMethod = 'cash';
       _selectCashPreset(_totalInt);
@@ -93,6 +102,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           await _forceLogout();
           return;
         }
+        // ignore: avoid_print
         print('Error loading cashier data: $e');
       }
     }
@@ -107,7 +117,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.dispose();
   }
 
-  // ====== Helper uang/kembalian ======
+  // ===== Helpers (cash/change) =====
   int _parseCashPaid() {
     final raw = _cashPaidController.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (raw.isEmpty) return 0;
@@ -122,13 +132,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return ((value + multiple - 1) ~/ multiple) * multiple;
   }
 
-  int get _roundedUpCashPreset =>
-      _roundUpToMultiple(_totalInt, _cashRoundingMultiple);
+  // ✅ tombol quick amount kanan = pembulatan ke atas
+  // kalau total sudah pas kelipatan, buat jadi total + multiple biar tidak sama
+  int get _roundedUpCashPreset {
+    final r = _roundUpToMultiple(_totalInt, _cashRoundingMultiple);
+    return (r == _totalInt) ? (_totalInt + _cashRoundingMultiple) : r;
+  }
+
+  String _formatThousand(int value) => _thousand.format(value);
 
   void _selectCashPreset(int amount) {
     setState(() {
       _selectedCashPreset = amount;
-      _cashPaidController.text = amount.toString();
+      // ✅ tampilkan format 1.000.000 di input
+      _cashPaidController.text = _formatThousand(amount);
     });
   }
 
@@ -136,19 +153,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() => _selectedCashPreset = 0);
   }
 
-  // ====== Checkout stok di server ======
+  // ===== Checkout stock on server =====
   Future<bool> _checkoutCartOnServer(int cashierId) async {
     final uri = Uri.parse('$_apiBaseUrl/api/cart/checkout?cashierId=$cashierId');
 
     try {
-      final response = await http.post(uri,
-      headers: await authHeader(),
-    );
-    if (response.statusCode == 200) {
+      final response = await http.post(
+        uri,
+        headers: await authHeader(),
+      );
+
+      if (response.statusCode == 200) {
         return true;
-    } else if (response.statusCode == 401) {
-      await _forceLogout(); // ✅ auto logout
-      return false;
+      } else if (response.statusCode == 401) {
+        await _forceLogout();
+        return false;
       } else {
         final message = response.body.isNotEmpty
             ? response.body
@@ -166,21 +185,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  // ====== Validasi cash ======
+  // ===== Validate cash =====
   bool _validateCashIfCashPayment() {
     if (_selectedPaymentMethod != 'cash') return true;
 
     final cashPaid = _parseCashPaid();
     if (cashPaid <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Masukkan uang customer terlebih dahulu.')),
+        const SnackBar(content: Text('Please enter the customer cash amount.')),
       );
       return false;
     }
 
     if (cashPaid < _totalInt) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Uang customer kurang.')),
+        const SnackBar(content: Text('Customer cash is not enough.')),
       );
       return false;
     }
@@ -199,20 +218,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    // Validasi metode transfer (pastikan pilih bank)
+    // Validate transfer method (must choose bank)
     if (_selectedPaymentMethod != 'cash' &&
         _selectedPaymentMethod != 'mandiri' &&
         _selectedPaymentMethod != 'bca') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih metode pembayaran terlebih dahulu.')),
+        const SnackBar(content: Text('Please select a payment method.')),
       );
       return;
     }
 
-    // Validasi cash bila cash
+    // Validate cash if cash
     if (!_validateCashIfCashPayment()) return;
 
-    // STEP 1: Validasi stok & update stok
+    // STEP 1: Validate & update stock
     final stockOk = await _checkoutCartOnServer(cashierId);
     if (!stockOk) return;
 
@@ -253,9 +272,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         barrierDismissible: false,
         builder: (context) => _SuccessDialog(
           paid: _selectedPaymentMethod == 'cash' ? _parseCashPaid() : _totalInt,
-          change: _selectedPaymentMethod == 'cash'
-              ? (_change >= 0 ? _change : 0)
-              : 0,
+          change:
+          _selectedPaymentMethod == 'cash' ? (_change >= 0 ? _change : 0) : 0,
           rupiah: _rupiah,
           onClose: () {
             Navigator.pop(context);
@@ -285,300 +303,651 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final maxWidth = 920.0;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    final itemKinds = widget.cartItems.length;
+    final totalQty =
+    widget.cartItems.fold<int>(0, (sum, it) => sum + it.quantity);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        title: Row(
+      backgroundColor: kBackgroundColor,
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Column(
           children: [
-            const Text(
-              "Yoomie",
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+            _buildGradientHeader(),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 120 + bottomInset),
+                  child: Column(
+                    children: [
+                      _buildOrderSummaryCard(
+                          itemKinds: itemKinds, totalQty: totalQty),
+                      const SizedBox(height: 14),
+                      _buildPaymentMethodCard(),
+                      const SizedBox(height: 14),
+                      if (_selectedPaymentMethod == 'cash')
+                        _buildCashCard()
+                      else
+                        _buildTransferCard(),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const Spacer(),
-            const Icon(Icons.search, color: Colors.black),
-            const SizedBox(width: 20),
-            const Icon(Icons.shopping_cart_outlined, color: Colors.black),
-            const SizedBox(width: 20),
-            IconButton(
-              icon: const Icon(Icons.account_circle_outlined,
-                  color: Colors.black),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => ProfilePage()),
-                );
-              },
             ),
           ],
         ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-            child: _buildPaymentLayout(context),
-          ),
-        ),
-      ),
-      bottomNavigationBar: _MockBottomNav(currentIndex: 2),
+      bottomNavigationBar: _buildBottomActionBar(),
     );
   }
 
-  Widget _buildPaymentLayout(BuildContext context) {
-    final roundedPreset = _roundedUpCashPreset;
+  // ================= HEADER =================
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: const [
-            Icon(Icons.shopping_cart_checkout,
-                size: 26, color: Color(0xFF0B5FA5)),
-            SizedBox(width: 10),
-            Text(
-              'Transaction',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-            ),
-          ],
+  Widget _buildGradientHeader() {
+    final topInset = MediaQuery.of(context).padding.top;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 14),
-
-        // Cancel & Charge (row) + Total (center under)
-        Column(
-          children: [
-            Row(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => Navigator.of(context).maybePop(),
+            child: Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.22),
+                ),
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 140,
-                  height: 44,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.black26),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
+                Text(
+                  'Checkout',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const Spacer(),
-                SizedBox(
-                  width: 140,
-                  height: 44,
-                  child: ElevatedButton(
-                    onPressed: _onChargePressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2F6BC2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Charge',
-                      style: TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w600),
-                    ),
+                SizedBox(height: 2),
+                Text(
+                  'Review the order and complete payment.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Center(
-              child: Text(
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= CARDS =================
+
+  Widget _cardShell({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildOrderSummaryCard(
+      {required int itemKinds, required int totalQty}) {
+    return _cardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Order Summary',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _infoPill('Items', itemKinds.toString()),
+              const SizedBox(width: 10),
+              _infoPill('Qty', totalQty.toString()),
+              const Spacer(),
+              Text(
                 _rupiah.format(widget.totalPrice),
-                style:
-                const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF041761),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
 
-        const SizedBox(height: 10),
-        const Divider(),
-
-        // CASH section
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(
-              width: 120,
-              child: Padding(
-                padding: EdgeInsets.only(top: 10),
-                child: Text('Cash',
-                    style:
-                    TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-            ),
-            Expanded(
-              child: Column(
+          // Item list (compact)
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.cartItems.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, i) {
+              final it = widget.cartItems[i];
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      // Tombol kiri: nominal pas (total)
-                      Expanded(
-                        child: _AmountButton(
-                          label: _rupiah.format(_totalInt),
-                          selected: _selectedPaymentMethod == 'cash' &&
-                              _selectedCashPreset == _totalInt,
-                          onTap: () {
-                            setState(() => _selectedPaymentMethod = 'cash');
-                            _selectCashPreset(_totalInt);
-                          },
-                        ),
+                  Expanded(
+                    child: Text(
+                      it.product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(width: 10),
-
-                      // Tombol kanan: kelipatan ke atas (misal 107rb -> 110rb)
-                      Expanded(
-                        child: _AmountButton(
-                          label: _rupiah.format(roundedPreset),
-                          selected: _selectedPaymentMethod == 'cash' &&
-                              _selectedCashPreset == roundedPreset,
-                          onTap: () {
-                            setState(() => _selectedPaymentMethod = 'cash');
-                            _selectCashPreset(roundedPreset);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _cashPaidController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: InputDecoration(
-                      hintText: _rupiah.format(roundedPreset),
-                      border: const OutlineInputBorder(),
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black26),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide:
-                        BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
                     ),
-                    onTap: () {
-                      if (_selectedPaymentMethod != 'cash') {
-                        setState(() => _selectedPaymentMethod = 'cash');
-                      }
-                      _clearCashPreset();
-                    },
-                    onChanged: (_) {
-                      if (_selectedPaymentMethod != 'cash') {
-                        setState(() => _selectedPaymentMethod = 'cash');
-                      }
-                      _clearCashPreset();
-                      setState(() {});
-                    },
                   ),
-
-                  const SizedBox(height: 10),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      const Text('Change: ',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text(
-                        _selectedPaymentMethod == 'cash' && _parseCashPaid() > 0
-                            ? (_change >= 0 ? _rupiah.format(_change) : '-')
-                            : '-',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: (_selectedPaymentMethod == 'cash' &&
-                              _parseCashPaid() > 0 &&
-                              _change >= 0)
-                              ? Colors.green
-                              : Colors.red,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 10),
+                  Text(
+                    'x${it.quantity}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: kTextGrey,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-        const Divider(),
-
-        // TRANSFER section
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(
-              width: 120,
-              child: Padding(
-                padding: EdgeInsets.only(top: 10),
-                child: Text('Transfer',
-                    style:
-                    TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _BankButton(
-                          label: 'Mandiri',
-                          selected: _selectedPaymentMethod == 'mandiri',
-                          onTap: () => setState(
-                                  () => _selectedPaymentMethod = 'mandiri'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _BankButton(
-                          label: 'BCA',
-                          selected: _selectedPaymentMethod == 'bca',
-                          onTap: () =>
-                              setState(() => _selectedPaymentMethod = 'bca'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _transferNoteController,
-                    decoration: const InputDecoration(
-                      hintText: 'Optional Note',
-                      border: OutlineInputBorder(),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black26),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide:
-                        BorderSide(color: Color(0xFF2F6BC2), width: 1.6),
-                      ),
-                      contentPadding:
-                      EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  const SizedBox(width: 10),
+                  Text(
+                    _rupiah.format(it.totalPrice),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodCard() {
+    return _cardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Payment Method',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Choose how the customer pays.',
+            style: TextStyle(fontSize: 12.5, color: kTextGrey),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _MethodChip(
+                  label: 'Cash',
+                  icon: Icons.payments_outlined,
+                  selected: _selectedPaymentMethod == 'cash',
+                  onTap: () {
+                    setState(() => _selectedPaymentMethod = 'cash');
+                    _selectCashPreset(_totalInt);
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MethodChip(
+                  label: 'Mandiri',
+                  icon: Icons.account_balance_outlined,
+                  selected: _selectedPaymentMethod == 'mandiri',
+                  onTap: () =>
+                      setState(() => _selectedPaymentMethod = 'mandiri'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MethodChip(
+                  label: 'BCA',
+                  icon: Icons.account_balance_outlined,
+                  selected: _selectedPaymentMethod == 'bca',
+                  onTap: () => setState(() => _selectedPaymentMethod = 'bca'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCashCard() {
+    final roundedPreset = _roundedUpCashPreset;
+    final paid = _parseCashPaid();
+
+    final bool showChange = paid > 0;
+    final bool enough = showChange && _change >= 0;
+
+    return _cardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cash Payment',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Select a quick amount or input manually.',
+            style: TextStyle(fontSize: 12.5, color: kTextGrey),
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: _AmountButton(
+                  label: _rupiah.format(_totalInt),
+                  selected: _selectedCashPreset == _totalInt,
+                  onTap: () {
+                    _selectCashPreset(_totalInt);
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _AmountButton(
+                  label: _rupiah.format(roundedPreset),
+                  selected: _selectedCashPreset == roundedPreset,
+                  onTap: () {
+                    _selectCashPreset(roundedPreset);
+                  },
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          TextField(
+            controller: _cashPaidController,
+            keyboardType: TextInputType.number,
+            // ✅ format otomatis jadi 1.000.000 saat mengetik
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
+            decoration: InputDecoration(
+              hintText: _rupiah.format(roundedPreset),
+              prefixIcon: const Icon(Icons.payments_outlined, color: kTextGrey),
+              filled: true,
+              fillColor: const Color(0xFFF3F4F6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+            onTap: () {
+              _clearCashPreset();
+              setState(() {});
+            },
+            onChanged: (_) {
+              _clearCashPreset();
+              setState(() {});
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.currency_exchange,
+                    size: 18, color: kTextGrey),
+                const SizedBox(width: 8),
+                const Text(
+                  'Change',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: kTextGrey),
+                ),
+                const Spacer(),
+                Text(
+                  showChange ? (enough ? _rupiah.format(_change) : '-') : '-',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: showChange
+                        ? (enough ? Colors.green : Colors.red)
+                        : kTextGrey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          if (showChange && !enough) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Cash is not enough.',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransferCard() {
+    return _cardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bank Transfer',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Choose the bank and add an optional note.',
+            style: TextStyle(fontSize: 12.5, color: kTextGrey),
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: _BankButton(
+                  label: 'Mandiri',
+                  selected: _selectedPaymentMethod == 'mandiri',
+                  onTap: () =>
+                      setState(() => _selectedPaymentMethod = 'mandiri'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _BankButton(
+                  label: 'BCA',
+                  selected: _selectedPaymentMethod == 'bca',
+                  onTap: () => setState(() => _selectedPaymentMethod = 'bca'),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          TextField(
+            controller: _transferNoteController,
+            decoration: InputDecoration(
+              hintText: 'Optional note',
+              prefixIcon:
+              const Icon(Icons.edit_note_rounded, color: kTextGrey),
+              filled: true,
+              fillColor: const Color(0xFFF3F4F6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoPill(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: kBackgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: kTextGrey,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: Colors.black87,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= BOTTOM ACTION BAR =================
+
+  Widget _buildBottomActionBar() {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomInset),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Total',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: kTextGrey,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _rupiah.format(widget.totalPrice),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF041761),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      backgroundColor: const Color(0xFFF9FAFB),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _onChargePressed,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                    ),
+                    child: Ink(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                      ),
+                      child: Container(
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Charge',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ================= SMALL UI COMPONENTS =================
+
+class _MethodChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _MethodChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: selected ? const Color(0xFFEFF6FF) : const Color(0xFFF3F4F6),
+          border: Border.all(
+            color: selected ? kPrimaryGradientEnd : Colors.transparent,
+            width: selected ? 1.2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 18,
+                color: selected ? kPrimaryGradientEnd : kTextGrey),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
+                color: selected ? kPrimaryGradientEnd : Colors.black87,
               ),
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -597,18 +966,23 @@ class _AmountButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 46,
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          backgroundColor: selected ? const Color(0xFF2F6BC2) : Colors.white,
-          foregroundColor: selected ? Colors.white : Colors.black,
+          backgroundColor: selected ? kPrimaryGradientEnd : Colors.white,
+          foregroundColor: selected ? Colors.white : Colors.black87,
           side: BorderSide(
-            color: selected ? const Color(0xFF2F6BC2) : Colors.black26,
+            color: selected ? kPrimaryGradientEnd : const Color(0xFFE5E7EB),
+            width: selected ? 1.2 : 1,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        child: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
       ),
     );
   }
@@ -628,23 +1002,29 @@ class _BankButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 46,
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+          backgroundColor: selected ? const Color(0xFFEFF6FF) : Colors.white,
+          foregroundColor: Colors.black87,
           side: BorderSide(
-            color: selected ? const Color(0xFF2F6BC2) : Colors.black26,
-            width: selected ? 1.6 : 1,
+            color: selected ? kPrimaryGradientEnd : const Color(0xFFE5E7EB),
+            width: selected ? 1.4 : 1,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        child: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
       ),
     );
   }
 }
+
+// ================= SUCCESS DIALOG (Yoomie style) =================
 
 class _SuccessDialog extends StatelessWidget {
   final int paid;
@@ -663,57 +1043,142 @@ class _SuccessDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.all(24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 82,
-                  height: 82,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.green,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.16),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withOpacity(0.22)),
+                    ),
+                    child: const Icon(Icons.check_rounded, color: Colors.white),
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 44),
-                ),
-                const SizedBox(height: 14),
-                const Text('SUCCESS', style: TextStyle(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    const Expanded(child: Text('Paid', style: TextStyle(fontWeight: FontWeight.w600))),
-                    Text(rupiah.format(paid), style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Expanded(child: Text('Change', style: TextStyle(fontWeight: FontWeight.w600))),
-                    Text(rupiah.format(change), style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ],
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Payment Successful',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: onClose,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.16),
+                        borderRadius: BorderRadius.circular(999),
+                        border:
+                        Border.all(color: Colors.white.withOpacity(0.22)),
+                      ),
+                      child: const Icon(Icons.close_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              child: Column(
+                children: [
+                  _row('Paid', rupiah.format(paid)),
+                  const SizedBox(height: 10),
+                  _row('Change', rupiah.format(change)),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: onClose,
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Ink(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [kPrimaryGradientStart, kPrimaryGradientEnd],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                        ),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Back to Cart',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: kTextGrey,
             ),
           ),
-          Positioned(
-            right: 8,
-            top: 8,
-            child: InkWell(
-              onTap: onClose,
-              child: Container(
-                width: 26,
-                height: 26,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.close, color: Colors.white, size: 16),
-              ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Colors.black87,
             ),
           ),
         ],
@@ -722,23 +1187,27 @@ class _SuccessDialog extends StatelessWidget {
   }
 }
 
-class _MockBottomNav extends StatelessWidget {
-  final int currentIndex;
-  const _MockBottomNav({required this.currentIndex});
+// ================= INPUT FORMATTER: 1.000.000 =================
+
+class ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  final NumberFormat _formatter = NumberFormat.decimalPattern('id_ID');
 
   @override
-  Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: Colors.black,
-      unselectedItemColor: Colors.black45,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.lock_outline), label: 'PoS'),
-        BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Transaction'),
-        BottomNavigationBarItem(icon: Icon(Icons.shopping_cart_outlined), label: 'Cart'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-      ],
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.isEmpty) {
+      return const TextEditingValue(text: '');
+    }
+
+    final number = int.tryParse(digitsOnly) ?? 0;
+    final formatted = _formatter.format(number);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

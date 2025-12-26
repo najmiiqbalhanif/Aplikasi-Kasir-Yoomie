@@ -139,7 +139,7 @@ class _CartPageState extends State<CartPage> {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          "Keranjang masih kosong",
+                          "Your cart is empty",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -148,7 +148,7 @@ class _CartPageState extends State<CartPage> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          "Tambah produk dari halaman katalog untuk mulai membuat pesanan.",
+                          "Add products from the catalog to start creating an order.",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
@@ -267,7 +267,7 @@ class _CartPageState extends State<CartPage> {
                                   alignment: Alignment.center,
                                   padding: const EdgeInsets.symmetric(vertical: 16),
                                   child: const Text(
-                                    'Lanjut ke Pembayaran',
+                                    'Continue to Payment',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -392,7 +392,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Kelola item di keranjang Anda.',
+                      'Manage the items in your cart.',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -513,7 +513,7 @@ class _CartPageState extends State<CartPage> {
                                   ),
                                   SizedBox(width: 10),
                                   Text(
-                                    'Hapus dari keranjang',
+                                    'Delete from cart',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
@@ -625,7 +625,7 @@ class _CartPageState extends State<CartPage> {
                           ),
                         ),
                         child: const Text(
-                          'Selesai',
+                          'Finish',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,

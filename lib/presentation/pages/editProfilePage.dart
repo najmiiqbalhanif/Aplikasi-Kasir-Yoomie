@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/cashier.dart';
 import '../../services/CashierService.dart';
 
-// Theme warna biar konsisten dengan halaman lain
+// Theme colors (consistent with other pages)
 const Color kBackgroundColor = Color(0xFFF3F6FD);
 const Color kPrimaryGradientStart = Color(0xFF3B82F6);
 const Color kPrimaryGradientEnd = Color(0xFF4F46E5);
@@ -25,7 +25,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _cashierNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
-  // ✅ Password section (opsional)
+  // ✅ Password section (optional)
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -89,9 +89,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   String? _validateNewPassword(String pw) {
-    if (pw.length < 8) return 'Password minimal 8 karakter.';
+    if (pw.length < 8) return 'Password must be at least 8 characters.';
     final hasSpecial = RegExp(r'[^A-Za-z0-9]').hasMatch(pw);
-    if (!hasSpecial) return 'Password harus mengandung 1 karakter spesial (contoh: !@#\$%).';
+    if (!hasSpecial) {
+      return 'Password must include 1 special character (e.g., !@#\$%).';
+    }
     return null;
   }
 
@@ -108,7 +110,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     final wantsPw = _wantsPasswordChange();
 
-    // ✅ Validasi password kalau user ingin ganti
+    // ✅ Validate password only if the user wants to change it
     if (wantsPw) {
       final current = _currentPasswordController.text;
       final nw = _newPasswordController.text;
@@ -116,7 +118,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (current.isEmpty || nw.isEmpty || cf.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jika ingin ganti password, semua field password wajib diisi.')),
+          const SnackBar(
+            content: Text('To change your password, all password fields are required.'),
+          ),
         );
         return;
       }
@@ -129,7 +133,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (nw != cf) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Konfirmasi password tidak sama.')),
+          const SnackBar(content: Text('Password confirmation does not match.')),
         );
         return;
       }
@@ -142,7 +146,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     setState(() => _isSaving = true);
 
-    // 1) Update profil jika ada perubahan
+    // 1) Update profile if there are changes
     bool profileOk = true;
     if (hasProfileChanges) {
       profileOk = await _cashierService.updateCashierProfile(
@@ -158,12 +162,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (!profileOk) {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan profil')),
+        const SnackBar(content: Text('Failed to save profile.')),
       );
       return;
     }
 
-    // 2) Change password jika user isi
+    // 2) Change password if the user filled it
     if (wantsPw) {
       final err = await _cashierService.changeCashierPassword(
         currentPassword: _currentPasswordController.text,
@@ -238,7 +242,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(width: 4),
               const Text(
-                'Edit Profil',
+                'Edit Profile',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -251,7 +255,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           const Padding(
             padding: EdgeInsets.only(left: 12.0, right: 12),
             child: Text(
-              'Perbarui informasi akun kasir dan foto profilmu.',
+              'Update your cashier account information and profile photo.',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 12.5,
@@ -353,27 +357,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Informasi Profil', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            const Text(
+              'Profile Information',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 4),
-            const Text('Pastikan data di bawah sudah sesuai.', style: TextStyle(fontSize: 12.5, color: kTextGrey)),
+            const Text(
+              'Make sure the information below is correct.',
+              style: TextStyle(fontSize: 12.5, color: kTextGrey),
+            ),
             const SizedBox(height: 16),
 
-            const Text('Nama lengkap', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const Text('Full name', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
               controller: _fullNameController,
               validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
-              decoration: _pillInputDecoration(hintText: 'Nama lengkap kasir'),
+              decoration: _pillInputDecoration(hintText: 'Cashier full name'),
             ),
 
             const SizedBox(height: 12),
 
-            const Text('Nama kasir (username)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const Text('Cashier name (username)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
               controller: _cashierNameController,
               validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
-              decoration: _pillInputDecoration(hintText: 'Contoh: kasir1, kasir_toko'),
+              decoration: _pillInputDecoration(hintText: 'Example: cashier1, cashier_store'),
             ),
 
             const SizedBox(height: 12),
@@ -384,28 +394,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
               controller: _emailController,
               validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
               keyboardType: TextInputType.emailAddress,
-              decoration: _pillInputDecoration(hintText: 'kasir@tokoanda.com'),
+              decoration: _pillInputDecoration(hintText: 'cashier@yourstore.com'),
             ),
 
             const SizedBox(height: 16),
             const Divider(height: 1),
             const SizedBox(height: 16),
 
-            const Text('Ubah Password (opsional)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            const Text(
+              'Change Password (optional)',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 4),
             const Text(
-              'Isi hanya jika ingin mengganti password. Minimal 8 karakter & 1 karakter spesial.',
+              'Fill this section only if you want to change your password. Minimum 8 characters & 1 special character.',
               style: TextStyle(fontSize: 12.5, color: kTextGrey),
             ),
             const SizedBox(height: 14),
 
-            const Text('Password saat ini', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const Text('Current password', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
               controller: _currentPasswordController,
               obscureText: _obscureCurrent,
               decoration: _passwordDecoration(
-                hintText: 'Masukkan password saat ini',
+                hintText: 'Enter your current password',
                 obscure: _obscureCurrent,
                 onToggle: () => setState(() => _obscureCurrent = !_obscureCurrent),
               ),
@@ -413,13 +426,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
             const SizedBox(height: 12),
 
-            const Text('Password baru', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const Text('New password', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
               controller: _newPasswordController,
               obscureText: _obscureNew,
               decoration: _passwordDecoration(
-                hintText: 'Buat password baru',
+                hintText: 'Create a new password',
                 obscure: _obscureNew,
                 onToggle: () => setState(() => _obscureNew = !_obscureNew),
               ),
@@ -427,13 +440,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
             const SizedBox(height: 12),
 
-            const Text('Konfirmasi password baru', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+            const Text('Confirm new password', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             TextFormField(
               controller: _confirmPasswordController,
               obscureText: _obscureConfirm,
               decoration: _passwordDecoration(
-                hintText: 'Ulangi password baru',
+                hintText: 'Re-enter your new password',
                 obscure: _obscureConfirm,
                 onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
               ),
@@ -469,7 +482,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
                     : const Text(
-                  'Simpan Perubahan',
+                  'Save Changes',
                   style: TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w600),
                 ),
               ),
