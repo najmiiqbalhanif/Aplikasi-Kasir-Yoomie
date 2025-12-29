@@ -25,7 +25,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   String? errorMessage;
 
   final TransactionService transactionService =
-  TransactionService(baseUrl: 'http://10.0.2.2:8080');
+  TransactionService(baseUrl: 'http://192.168.0.194:8080');
 
   final NumberFormat currencyFormat = NumberFormat.currency(
     locale: 'id_ID',

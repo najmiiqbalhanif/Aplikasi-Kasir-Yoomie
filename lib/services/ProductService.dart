@@ -4,7 +4,7 @@ import '../models/Product.dart';
 import 'authHeader.dart';
 
 class ProductService {
-  final String baseUrl = 'http://10.0.2.2:8080/api/pospage';
+  final String baseUrl = 'http://192.168.0.194:8080/api/pospage';
 
   Future<List<Product>> getProducts() async {
     final response = await http.get(
@@ -24,7 +24,7 @@ class ProductService {
 
   Future<Product> getProductById(int id) async {
     final url = Uri.parse(
-      'http://10.0.2.2:8080/api/productpage/get/$id',
+      'http://192.168.0.194:8080/api/productpage/get/$id',
     );
 
     final response = await http.get(

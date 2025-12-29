@@ -328,7 +328,7 @@ class _CartPageState extends State<CartPage> {
     const double radius = 24;
     final double topInset = MediaQuery.of(context).padding.top;
 
-    const double contentHeight = 40;
+    const double contentHeight = 47;
 
     return PreferredSize(
       preferredSize: Size.fromHeight(topInset + contentHeight),
@@ -354,29 +354,6 @@ class _CartPageState extends State<CartPage> {
           padding: EdgeInsets.fromLTRB(20, topInset, 20, 16),
           child: Row(
             children: [
-              if (Navigator.of(context).canPop())
-                InkWell(
-                  borderRadius: BorderRadius.circular(999),
-                  onTap: () => Navigator.of(context).maybePop(),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.22),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              if (Navigator.of(context).canPop()) const SizedBox(width: 12),
-
               const Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -401,19 +378,6 @@ class _CartPageState extends State<CartPage> {
                   ],
                 ),
               ),
-
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _initializationFuture = _initializeCartData();
-                  });
-                },
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  color: Colors.white,
-                ),
-                tooltip: 'Refresh',
-              ),
             ],
           ),
         ),
@@ -421,7 +385,7 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  // ==== BOTTOM SHEET QTY PICKER (STYLE PERSIS SEPERTI CONTOH KAMU) ====
+  // ==== BOTTOM SHEET QTY PICKER (SOLUSI 1: SAFE AREA) ====
   Future<int?> _showQuantityPicker(
       BuildContext context,
       int currentQuantity,
@@ -432,8 +396,7 @@ class _CartPageState extends State<CartPage> {
     if (maxQty <= 0) maxQty = currentQuantity;
     final initial = (currentQuantity > maxQty) ? maxQty : currentQuantity;
 
-    final FixedExtentScrollController scrollController =
-    FixedExtentScrollController(
+    final FixedExtentScrollController scrollController = FixedExtentScrollController(
       initialItem: (initial - 1).clamp(0, maxQty - 1),
     );
 
@@ -442,6 +405,7 @@ class _CartPageState extends State<CartPage> {
     return await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true, // <-- KUNCI: bikin posisi bawah sejajar & tidak “tenggelam”
       backgroundColor: Colors.transparent,
       elevation: 0,
       builder: (BuildContext ctx) {
@@ -449,192 +413,192 @@ class _CartPageState extends State<CartPage> {
           builder: (BuildContext ctx, StateSetter setStateInner) {
             final height = MediaQuery.of(ctx).size.height;
 
-            return Container(
-              width: double.infinity,
-              height: height * 0.60,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Color(0xFF3B82F6),
-                    Color(0xFF4F46E5),
+            return SafeArea(
+              top: false, // biar tetap mepet atas sheet (handle + header), tapi bawah aman
+              child: Container(
+                width: double.infinity,
+                height: height * 0.60,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Color(0xFF3B82F6),
+                      Color(0xFF4F46E5),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.18),
+                      blurRadius: 22,
+                      spreadRadius: 2,
+                      offset: const Offset(0, -6),
+                    ),
                   ],
                 ),
-                borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.18),
-                    blurRadius: 22,
-                    spreadRadius: 2,
-                    offset: const Offset(0, -6),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 52,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.35),
-                      borderRadius: BorderRadius.circular(999),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 52,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.35),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(50),
-                            onTap: () => Navigator.pop(ctx, 0),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 14,
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(50),
+                              onTap: () => Navigator.pop(ctx, 0),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.16),
+                                  borderRadius: BorderRadius.circular(50),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.25),
+                                  ),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: Colors.red,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Delete from cart',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(999),
+                            onTap: () => Navigator.of(ctx).pop(),
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.16),
-                                borderRadius: BorderRadius.circular(50),
+                                color: Colors.white.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
                                   color: Colors.white.withOpacity(0.25),
                                 ),
                               ),
-                              child: const Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: Colors.red,
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Delete from cart',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                              child: const Icon(
+                                Icons.close_rounded,
+                                color: Colors.white,
+                                size: 22,
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(999),
-                          onTap: () => Navigator.of(ctx).pop(),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.18),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.25),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Positioned.fill(
-                          child: Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                              height: itemHeight,
-                              margin: const EdgeInsets.symmetric(horizontal: 24),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0),
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: Container(
+                                height: itemHeight,
+                                margin: const EdgeInsets.symmetric(horizontal: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(30),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        ListWheelScrollView.useDelegate(
-                          controller: scrollController,
-                          itemExtent: itemHeight,
-                          perspective: 0.003,
-                          diameterRatio: 1.6,
-                          magnification: 1.10,
-                          useMagnifier: true,
-                          squeeze: 1.05,
-                          physics: const FixedExtentScrollPhysics(),
-                          onSelectedItemChanged: (index) {
-                            setStateInner(() => selectedQuantity = index + 1);
-                          },
-                          childDelegate: ListWheelChildBuilderDelegate(
-                            childCount: maxQty,
-                            builder: (BuildContext context, int index) {
-                              final qty = index + 1;
-                              final isSelected = qty == selectedQuantity;
-
-                              return Center(
-                                child: AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 120),
-                                  style: TextStyle(
-                                    fontSize: isSelected ? 26 : 18,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w800
-                                        : FontWeight.w500,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.white.withOpacity(0.65),
-                                  ),
-                                  child: Text('$qty'),
-                                ),
-                              );
+                          ListWheelScrollView.useDelegate(
+                            controller: scrollController,
+                            itemExtent: itemHeight,
+                            perspective: 0.003,
+                            diameterRatio: 1.6,
+                            magnification: 1.10,
+                            useMagnifier: true,
+                            squeeze: 1.05,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (index) {
+                              setStateInner(() => selectedQuantity = index + 1);
                             },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: maxQty,
+                              builder: (BuildContext context, int index) {
+                                final qty = index + 1;
+                                final isSelected = qty == selectedQuantity;
+
+                                return Center(
+                                  child: AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 120),
+                                    style: TextStyle(
+                                      fontSize: isSelected ? 26 : 18,
+                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.white.withOpacity(0.65),
+                                    ),
+                                    child: Text('$qty'),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx, selectedQuantity),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF0B3B8F),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(999),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx, selectedQuantity),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF0B3B8F),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          'Finish',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
+                          child: const Text(
+                            'Finish',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -642,6 +606,7 @@ class _CartPageState extends State<CartPage> {
       },
     );
   }
+
 
   // ==== ITEM CART BARU DENGAN CARD & LAYOUT LEBIH RAPI ====
   Widget _buildCartItem(BuildContext context, CartItem cartItem, int cashierId) {
@@ -865,7 +830,7 @@ class _CartPageState extends State<CartPage> {
       url = '/$url';
     }
 
-    final fullUrl = 'http://10.0.2.2:8080$url';
+    final fullUrl = 'http://192.168.0.194:8080$url';
     // ignore: avoid_print
     print('IMAGE URL: $fullUrl');
     return fullUrl;

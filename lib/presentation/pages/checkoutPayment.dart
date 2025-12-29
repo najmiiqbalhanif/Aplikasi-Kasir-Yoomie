@@ -45,7 +45,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // "cash" | "mandiri" | "bca"
   String _selectedPaymentMethod = 'cash';
 
-  static const String _apiBaseUrl = 'http://10.0.2.2:8080';
+  static const String _apiBaseUrl = 'http://192.168.0.194:8080';
   final checkoutService = CheckoutService(baseUrl: _apiBaseUrl);
 
   final NumberFormat _rupiah = NumberFormat.currency(
@@ -60,9 +60,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // preset cash selected (0 = none/custom)
   int _selectedCashPreset = 0;
 
-  // ✅ cash rounding preset (angka “terdekat” di atasnya)
-  // contoh: 1.130.000 -> 1.150.000, 1.170.000 -> 1.200.000
-  static const int _cashRoundingMultiple = 50000;
+
+  // ✅ cash rounding preset (angka “terdekat” di atasnya) berbasis pecahan Rupiah
+  // Aturan pecahan yang dipakai (sesuai request): 5.000, 10.000, 20.000, 50.000
+  //
+  // Contoh:
+  //  - 12.500  -> 15.000 (step 5.000)
+  //  - 22.500  -> 25.000 (step 5.000)
+  //  - 1.130.000 -> 1.150.000 (step 50.000)
+  static const List<int> _cashRoundingSteps = <int>[5000, 10000, 20000, 50000];
+
+  int _cashRoundingMultipleForTotal(int total) {
+    // Anda bisa ubah threshold ini jika ingin perilaku berbeda,
+    // namun tetap memakai step yang diminta.
+    if (total <= 50000) return 5000;     // <= 50k: kelipatan 5.000
+    if (total <= 200000) return 10000;   // <= 200k: kelipatan 10.000
+    if (total <= 500000) return 20000;   // <= 500k: kelipatan 20.000
+    return 50000;                        // > 500k: kelipatan 50.000
+  }
+
+  int get _cashRoundingMultiple => _cashRoundingMultipleForTotal(_totalInt);
+
 
   @override
   void initState() {
@@ -137,6 +155,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
   int get _roundedUpCashPreset {
     final r = _roundUpToMultiple(_totalInt, _cashRoundingMultiple);
     return (r == _totalInt) ? (_totalInt + _cashRoundingMultiple) : r;
+  }
+
+  // ✅ tombol quick amount "terbesar" = pembulatan ke atas ke kelipatan 50.000
+  // Selalu dibuat > opsi rounded normal agar tidak duplikat.
+  int get _roundedUpCashPresetMax {
+    int r = _roundUpToMultiple(_totalInt, 50000);
+    if (r == _totalInt) r += 50000;
+
+    final normal = _roundedUpCashPreset;
+    while (r <= normal) {
+      r += 50000;
+    }
+    return r;
   }
 
   String _formatThousand(int value) => _thousand.format(value);
@@ -281,7 +312,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               context,
               MaterialPageRoute(
                 builder: (_) => MainLayout(
-                  initialIndex: 2,
+                  initialIndex: 0,
                   cashierId: cashierId,
                 ),
               ),
@@ -574,6 +605,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _buildCashCard() {
     final roundedPreset = _roundedUpCashPreset;
+    final maxPreset = _roundedUpCashPresetMax;
     final paid = _parseCashPaid();
 
     final bool showChange = paid > 0;
@@ -612,6 +644,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   selected: _selectedCashPreset == roundedPreset,
                   onTap: () {
                     _selectCashPreset(roundedPreset);
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _AmountButton(
+                  label: _rupiah.format(maxPreset),
+                  selected: _selectedCashPreset == maxPreset,
+                  onTap: () {
+                    _selectCashPreset(maxPreset);
                   },
                 ),
               ),
