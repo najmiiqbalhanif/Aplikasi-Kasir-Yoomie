@@ -5,8 +5,8 @@ import '../models/cashier.dart';
 import 'authHeader.dart';
 
 class CashierService {
-  final String profileUrl = "http://192.168.0.194:8080/api/profilepage";
-  final String editProfileUrl = "http://192.168.0.194:8080/api/editprofilepage";
+  final String profileUrl = "http://10.0.2.2:8080/api/profilepage";
+  final String editProfileUrl = "http://10.0.2.2:8080/api/editprofilepage";
 
   Future<Cashier?> fetchCashierProfile() async {
     try {

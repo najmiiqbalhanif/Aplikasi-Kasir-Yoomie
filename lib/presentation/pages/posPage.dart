@@ -880,7 +880,7 @@ class ProductItem extends StatelessWidget {
       url = '/$url';
     }
 
-    final fullUrl = 'http://192.168.0.194:8080$url';
+    final fullUrl = 'http://10.0.2.2:8080$url';
     print('IMAGE URL (POS): $fullUrl');
     return fullUrl;
   }
