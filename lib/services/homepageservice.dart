@@ -4,7 +4,7 @@ import '../models/product.dart';
 import 'authHeader.dart';
 
 class Homepageservice {
-  static const String baseUrl = 'http://10.0.2.2:8080';
+  static const String baseUrl = 'http://172.20.10.5:8080';
   static const String endpoint = '/api/cashier/homepage-products';
 
   static Future<List<Product>> fetchHomepageProducts() async {

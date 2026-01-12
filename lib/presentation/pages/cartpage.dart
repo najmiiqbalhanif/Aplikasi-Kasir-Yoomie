@@ -830,7 +830,7 @@ class _CartPageState extends State<CartPage> {
       url = '/$url';
     }
 
-    final fullUrl = 'http://10.0.2.2:8080$url';
+    final fullUrl = 'http://172.20.10.5$url';
     // ignore: avoid_print
     print('IMAGE URL: $fullUrl');
     return fullUrl;

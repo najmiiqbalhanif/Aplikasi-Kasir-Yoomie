@@ -45,7 +45,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // "cash" | "mandiri" | "bca"
   String _selectedPaymentMethod = 'cash';
 
-  static const String _apiBaseUrl = 'http://10.0.2.2:8080';
+  static const String _apiBaseUrl = 'http://172.20.10.5:8080';
   final checkoutService = CheckoutService(baseUrl: _apiBaseUrl);
 
   final NumberFormat _rupiah = NumberFormat.currency(

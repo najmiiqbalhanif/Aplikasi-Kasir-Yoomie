@@ -4,7 +4,7 @@ import '../models/CartItem.dart';
 import 'authHeader.dart';
 
 class CartService {
-  static const String BASE_URL = 'http://10.0.2.2:8080';
+  static const String BASE_URL = 'http://172.20.10.5:8080';
 
   Future<List<CartItem>> getCartItems(int cashierId) async {
     final url = Uri.parse('$BASE_URL/api/cart/items/$cashierId');

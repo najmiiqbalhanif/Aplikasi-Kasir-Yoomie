@@ -81,4 +81,31 @@ class CartProvider with ChangeNotifier {
     }
   }
 
+  void syncProducts(List<Product> latestProducts) {
+    bool changed = false;
+
+    for (int i = 0; i < _items.length; i++) {
+      final cartItem = _items[i];
+
+      final updatedProduct = latestProducts.firstWhere(
+            (p) => p.id == cartItem.product.id,
+        orElse: () => cartItem.product,
+      );
+
+      // kalau product object beda → replace CartItem
+      if (cartItem.product != updatedProduct) {
+        _items[i] = CartItem(
+          product: updatedProduct,
+          quantity: cartItem.quantity,
+        );
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -31,6 +32,10 @@ class _PoSPageState extends State<PoSPage>
 
   late Future<List<Product>> _futureProducts;
   late TabController _tabController;
+  Timer? _refreshTimer;
+  List<Product> _currentProducts = [];
+  bool _isRefreshingSilently = false;
+
 
   final CartService _cartService = CartService();
 
@@ -55,20 +60,75 @@ class _PoSPageState extends State<PoSPage>
   @override
   void initState() {
     super.initState();
-    _futureProducts = ProductService().getProducts();
-    _tabController =
-        TabController(length: _categories.length, vsync: this);
 
-    // Load cart contents from backend -> store into CartProvider
+    _tabController = TabController(
+      length: _categories.length,
+      vsync: this,
+    );
+
+    _futureProducts = ProductService().getProducts();
+    _futureProducts.then((data) => _currentProducts = data);
+
     _loadInitialCartFromServer();
+
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+          (_) => _loadProducts(),
+    );
   }
+
+
+  Future<void> _loadProducts() async {
+    if (_isRefreshingSilently) return;
+    _isRefreshingSilently = true;
+
+    try {
+      final newProducts = await ProductService().getProducts();
+
+      final isDifferent =
+          newProducts.length != _currentProducts.length ||
+              newProducts.any((p) {
+                final old = _currentProducts
+                    .where((o) => o.id == p.id)
+                    .cast<Product?>()
+                    .firstWhere((o) => o != null, orElse: () => null);
+
+                return old == null ||
+                    old.price != p.price ||
+                    old.stock != p.stock ||
+                    old.name != p.name ||
+                    old.photoUrl != p.photoUrl ||
+                    old.category != p.category;
+              });
+
+      if (isDifferent && mounted) {
+        setState(() {
+          _currentProducts = newProducts;
+          _allProducts = newProducts;
+          _futureProducts = Future.value(newProducts);
+        });
+
+        final cartProvider =
+        Provider.of<CartProvider>(context, listen: false);
+
+        cartProvider.syncProducts(newProducts);
+      }
+    } catch (_) {
+      // ignore
+    } finally {
+      _isRefreshingSilently = false;
+    }
+  }
+
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
+
 
   Future<void> _forceLogout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -641,7 +701,9 @@ class _PoSPageState extends State<PoSPage>
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
 
-                final products = snapshot.data ?? [];
+                final products = _currentProducts.isNotEmpty
+                    ? _currentProducts
+                    : (snapshot.data ?? []);
                 _allProducts = products;
 
                 return TabBarView(
@@ -880,7 +942,7 @@ class ProductItem extends StatelessWidget {
       url = '/$url';
     }
 
-    final fullUrl = 'http://10.0.2.2:8080$url';
+    final fullUrl = 'http://172.20.10.5:8080$url';
     print('IMAGE URL (POS): $fullUrl');
     return fullUrl;
   }
@@ -912,7 +974,7 @@ class ProductItem extends StatelessWidget {
               child: AspectRatio(
                 aspectRatio: 1,
                 child: Image.network(
-                  _resolveImageUrl(product.photoUrl),
+                  '${_resolveImageUrl(product.photoUrl)}?v=${DateTime.now().millisecondsSinceEpoch}',
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) =>
                   const Center(child: Icon(Icons.broken_image)),
